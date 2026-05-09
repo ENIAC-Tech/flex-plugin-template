@@ -1,0 +1,13 @@
+name: Publish to FlexStudio Marketplace
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    uses: eniacelec/flex-plugin-actions/.github/workflows/publish.yml@v1
+    with:
+      flexcli-version: "latest"
+    secrets:
+      webhook-secret: ${{ secrets.FLEX_MARKETPLACE_WEBHOOK_SECRET }}
