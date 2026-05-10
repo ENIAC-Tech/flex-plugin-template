@@ -9,8 +9,8 @@
     "pack": "flexcli plugin-v2 pack"
   },
   "dependencies": {
-    "@flexsdk/runtime": "^1.0.0",
-    "@flexsdk/types": "^1.0.0"
+    "@flexsdk/runtime": "^2.1.0",
+    "@flexsdk/types": "^2.1.0"
   },
   "devDependencies": {
     "@eniac/flexcli": "^1.0.7",
