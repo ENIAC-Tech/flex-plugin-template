@@ -8,7 +8,7 @@
     "name": "Your Name",
     "email": "you@example.com"
   },
-  "minHostVersion": "2.5.0",
+  "minHostVersion": "1.0.0",
   "native": false,
   "platforms": ["win32-x64", "darwin-arm64", "darwin-x64", "linux-x64"],
   "devices": ["flow2pro", "flexbar", "flex2"],
