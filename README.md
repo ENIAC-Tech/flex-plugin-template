@@ -59,8 +59,7 @@ If your plugin requires native Node.js addons (`native: true` in manifest.json),
 ```
 ├── .github/workflows/publish.yml   # Automated release workflow
 ├── .marketplace/
-│   ├── README.en.md                # Marketplace listing (English)
-│   └── README.zh.md                # Marketplace listing (Chinese, optional)
+│   └── README.md                   # How to add localized listing READMEs (author doc)
 ├── src/
 │   ├── backend/index.ts            # Plugin backend entry point
 │   └── frontend/                   # UI pages (Vue 3 + Vuetify 3)
