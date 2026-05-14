@@ -2,6 +2,14 @@
 
 A short description of your plugin.
 
+## Agent Skill
+
+This template includes a local Codex/OpenAI-compatible skill for FlexStudio plugin development:
+
+`@.agents/skills/flexstudio-plugin-developer/SKILL.md`
+
+Use that skill when asking an agent to edit plugin code, manifest fields, Unit definitions, backend runtime behavior, frontend iframe pages, Host API usage, dependency APIs, CLI workflows, or marketplace release setup. The skill routes the agent to the bundled FlexStudio plugin docs snapshot under `.agents/skills/flexstudio-plugin-developer/references/flexdoc/`.
+
 ## Development
 
 ```bash
@@ -9,7 +17,7 @@ npm install
 npm run dev
 ```
 
-`npm run dev` starts a local dev server and connects to FlexDesigner via WebSocket. Changes to backend code are hot-reloaded automatically.
+`npm run dev` starts the FlexCLI v2 dev workflow and connects the plugin to FlexStudio. Changes to backend and frontend code are rebuilt and reloaded by FlexCLI.
 
 ## Building
 
@@ -25,47 +33,46 @@ Releases are automated via GitHub Actions.
 
 ### First-time setup
 
-1. Register your plugin in FlexDesigner Marketplace (Settings → My Uploads → Publish Plugin)
-2. Copy the generated webhook secret
-3. Add it to your GitHub repo: **Settings → Secrets → Actions** → `FLEX_MARKETPLACE_WEBHOOK_SECRET`
+1. Register your plugin in FlexStudio Marketplace.
+2. Copy the generated webhook secret.
+3. Add it to your GitHub repo as the `FLEX_MARKETPLACE_WEBHOOK_SECRET` Actions secret.
 
 ### Releasing a new version
 
-1. Push your changes to `main`
-2. Create a new GitHub Release with a semver tag (e.g. `v1.0.0`)
-3. The workflow builds, packs, and notifies the marketplace server automatically
-4. If no permission or platform changes, the update goes live immediately
-5. If permissions or platforms changed, it enters the review queue
+1. Push your changes to `main`.
+2. Create a new GitHub Release with a semver tag, such as `v1.0.0`.
+3. The workflow builds, packs, and notifies the marketplace server.
+4. If permissions or platform support changed, the release may enter the review queue.
 
 ### Native plugins
 
-If your plugin requires native Node.js addons (`native: true` in manifest.json), the workflow runs a matrix build across all declared platforms. Each platform produces a separate `.flexplugin` artifact.
+If your plugin requires native Node.js addons, set `native: true` in `manifest.json`. The release workflow should build one package for each declared platform.
 
-## Manifest fields
+## Manifest Fields
 
 | Field | Description |
 |---|---|
-| `uuid` | `@username/plugin-name` — must match your marketplace account |
-| `minHostVersion` | Minimum FlexDesigner version required |
-| `native` | Set `true` if the plugin uses native addons |
-| `platforms` | Supported OS+arch combinations |
-| `devices` | Target device models |
-| `requiredCapabilities` | Device capabilities the plugin needs at runtime |
-| `permissions` | Host API permissions (sensitive ones require review) |
-| `dependencies` | Other marketplace plugins this plugin depends on |
+| `uuid` | Marketplace identity, usually `@username/plugin-name`. |
+| `minHostVersion` | Minimum FlexStudio version required by the plugin. |
+| `native` | Whether the plugin uses native Node.js addons. |
+| `platforms` | Supported OS and architecture combinations. |
+| `devices` | Target device models. |
+| `requiredCapabilities` | Device capabilities required at runtime. |
+| `permissions` | Host API permissions. Sensitive permissions may require review. |
+| `dependencies` | Other marketplace plugins this plugin depends on. |
 
-## Project structure
+## Project Structure
 
-```
-├── .github/workflows/publish.yml   # Automated release workflow
-├── .marketplace/
-│   └── README.md                   # How to add localized listing READMEs (author doc)
-├── src/
-│   ├── backend/index.ts            # Plugin backend entry point
-│   └── frontend/                   # UI pages (Vue 3 + Vuetify 3)
-├── locales/en.json                 # i18n strings
-├── manifest.json                   # Plugin manifest
-├── package.json
-├── tsconfig.json
-└── vite.config.ts
+```text
+.agents/                         # Local agent skill and bundled plugin docs snapshot
+.flexstudio/plugin-docs.json      # Sync metadata for the bundled docs snapshot
+.github/workflows/publish.yml     # Automated release workflow
+.marketplace/                     # Optional localized marketplace listing READMEs
+src/backend/index.ts              # Plugin backend entry point
+src/frontend/                     # UI pages, Vue 3, Vuetify 3
+locales/en.json                   # i18n strings
+manifest.json                     # Plugin manifest
+package.json
+tsconfig.json
+vite.config.ts
 ```

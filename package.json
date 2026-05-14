@@ -6,7 +6,9 @@
   "scripts": {
     "build": "flexcli plugin-v2 build",
     "dev": "flexcli plugin-v2 dev .",
-    "pack": "flexcli plugin-v2 pack"
+    "pack": "flexcli plugin-v2 pack",
+    "sync:plugin-skill-docs": "node scripts/sync-plugin-skill-docs.mjs",
+    "sync:plugin-skill-docs:check": "node scripts/sync-plugin-skill-docs.mjs --check"
   },
   "dependencies": {
     "@flexsdk/runtime": "^2.1.0",

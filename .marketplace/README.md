@@ -1,25 +1,17 @@
-# Marketplace README files (plugin authors)
+# Marketplace README Files
 
-FlexDesigner loads plugin documentation from your GitHub repository using the **same language codes as the host app** (FlexStudio / FlexDesigner renderer i18next keys in `src/renderer/main.ts`). Use these codes exactly in filenames so the server and client need no mapping.
-
-## Add per-locale storefront READMEs
-
-Create Markdown files under `.marketplace/`:
+FlexStudio can load localized marketplace documentation from your GitHub repository. Use the host UI language code in the filename.
 
 | Filename | Host UI language |
-|----------|------------------|
+|---|---|
 | `README.en.md` | English (`en`) |
-| `README.zh-CN.md` | Chinese (`zh-CN`) |
+| `README.zh-CN.md` | Simplified Chinese (`zh-CN`) |
 | `README.de.md` | German (`de`) |
 | `README.fr.md` | French (`fr`) |
 | `README.ja.md` | Japanese (`ja`) |
 
-Example: for Simplified Chinese, the path is `.marketplace/README.zh-CN.md` (not `README.zh.md`).
+For Simplified Chinese, use `.marketplace/README.zh-CN.md`, not `.marketplace/README.zh.md`.
 
-## Fallback
+If no localized README exists for the user's UI language, the marketplace falls back to the repository root `README.md`.
 
-If no `README.<language>.md` exists for the user’s current UI language, the marketplace falls back to the **repository root** `README.md` on the branch or tag being read.
-
-## About this file
-
-This `.marketplace/README.md` is **documentation for authors only**. It is not shown as the public listing description on the marketplace.
+This `.marketplace/README.md` file is author-facing guidance only. It is not used as the public marketplace listing.
