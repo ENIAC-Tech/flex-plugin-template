@@ -501,7 +501,7 @@ interface PluginSliderChangedEventPayload {
   uuid: string
   typeId: string
   value: number
-  phase?: 'start' | 'change' | 'end'
+  phase: 'preview' | 'commit'
   min: number
   max: number
   step: number
