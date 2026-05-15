@@ -177,15 +177,11 @@ await this.on('device.connection.changed', async (event) => {
 })
 ```
 
-支持通配符：
+支持通配符，但插件 Unit 运行时事件不要通过原始 `device.plugin.*` wildcard 订阅；这类事件按 Unit owner 隔离，应使用后面的 Unit helper。
 
 ```ts
-await this.on('device.plugin.*.pressed', async (event) => {
-  this.logger.info('unit pressed', event.topic)
-})
-
-await this.on('device.plugin.**.pressed', async (event) => {
-  this.logger.info('nested typeId pressed', event.topic)
+await this.on('device.connection.*', async (event) => {
+  this.logger.info('device connection event', event.topic)
 })
 ```
 
@@ -218,7 +214,7 @@ await this.once('device.connection.changed', handler)
 支持的事件：
 
 ```ts
-type UnitDeviceEventType = 'load' | 'unload' | 'touch' | 'pressed' | 'released'
+type UnitDeviceEventType = 'load' | 'unload' | 'touch' | 'pressed' | 'released' | 'changed'
 ```
 
 示例：
@@ -290,3 +286,25 @@ await this.hostApi.ui.showSnackbarMessage({
 | `matchPluginTopicPattern` | 测试一个 topic 是否匹配通配符 pattern。 |
 | `matchPluginTopicAgainstPatterns` | 测试 topic 是否匹配多个 pattern。 |
 | `isCanvasPushTerminalError` | 判断 Canvas 推帧错误是否应停止渲染循环。 |
+
+<!-- plugin-cycled-slider:start -->
+## Plugin cycled / slider Runtime Helpers
+
+`FlexPluginBase` 提供 Unit runtime helper，减少直接拼 Host API 调用：
+
+```ts
+await this.onUnitEvent('acme.media.playback', 'pressed', async (event) => {
+  const payload = event.payload as any
+  await this.setUnitFunction(payload.serialNumber, payload.uuid, 'pause')
+})
+
+await this.onSliderUnitChanged('acme.media.volume', async (payload) => {
+  await mediaPlayer.setVolume(payload.value)
+  await this.setUnitSliderValue(payload.serialNumber, payload.uuid, payload.value)
+})
+```
+
+`onSliderUnitChanged()` 接收宿主规范化后的 slider payload，包含 `value`、`phase`、`min`、`max`、`step`、`format`、`displayText`、`data` 和 `serialNumber`。
+
+`cycled` 的建议流程是：监听 `pressed` 或 `touch` -> 执行业务动作 -> 成功后调用 `setUnitFunction(serialNumber, unitUuid, functionId)`。宿主和设备不会自动切换 plugin `cycled` 状态。
+<!-- plugin-cycled-slider:end -->

@@ -175,6 +175,8 @@ interface PluginFrontendBridge {
   backendRpc(method: string, params?: any[]): Promise<any>
   getUnitData(): Promise<any>
   setUnitData(data: any): Promise<void>
+  getSelectedFunctionContext(): Promise<PluginSelectedFunctionContext | null>
+  setSelectedFunctionData(functionId: string, data: any): Promise<void>
   getUnit(): Promise<any>
   setUnit(unit: any): Promise<void>
   notifyViewReady(): void
@@ -305,3 +307,51 @@ type PluginIframePageKind =
 SDK 会自动设置透明背景、隐藏滚动条并上报内容高度。编辑器页面使用内容高度，`unit-view` 页面填满宿主分配的 Unit 区域。
 
 开发者仍应避免在插件页面中使用固定全屏布局，除非该页面是 `unit-view`。
+
+<!-- plugin-cycled-slider:start -->
+## Plugin cycled Function Bridge
+
+当 `cycled` Unit 提供 `unitFunctionEditor` 时，同一个 iframe 组件用于编辑所有函数，但宿主会把当前选中的函数上下文通过 bridge 暴露给前端。不要使用自定义 props 契约。
+
+`useFlexBridge()` 新增：
+
+```ts
+const {
+  unitData,
+  selectedFunctionContext,
+  setSelectedFunctionData,
+} = useFlexBridge()
+```
+
+`selectedFunctionContext` 的结构：
+
+```ts
+interface PluginSelectedFunctionContext {
+  functionId: string
+  functionIndex: number
+  name?: string
+  data: Record<string, any>
+}
+```
+
+`unitData` 在 plugin `cycled` function editor 中会指向当前选中函数的 `data`。保存时应调用：
+
+```ts
+await setSelectedFunctionData(
+  selectedFunctionContext.value!.functionId,
+  {
+    ...unitData.value,
+    command: 'pause',
+  },
+)
+```
+
+原始 bridge 也提供：
+
+```ts
+await bridge.getSelectedFunctionContext()
+await bridge.setSelectedFunctionData(functionId, data)
+```
+
+`name` 和 `appearance` 仍由宿主已有编辑器管理。插件函数编辑器只负责该函数的业务 `data`。
+<!-- plugin-cycled-slider:end -->

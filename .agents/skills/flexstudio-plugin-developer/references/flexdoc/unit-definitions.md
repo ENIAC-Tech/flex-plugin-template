@@ -85,6 +85,9 @@ interface PluginUnitDefinitionRuntime {
   hasFunctionEditor?: boolean
   hasAppearanceEditor?: boolean
   hasView?: boolean
+  appearanceOverride?: PluginAppearanceOverride
+  functions?: PluginUnitDefinitionCycledFunction[]
+  slider?: PluginUnitDefinitionSliderConfig
   defaultData?: Record<string, any>
   platforms?: ('win32' | 'darwin' | 'linux')[]
   libraryUUID?: string
@@ -110,7 +113,7 @@ interface PluginUnitDefinitionRuntime {
 
 ```ts
 interface PluginUnit {
-  type: 'standard' | 'custom' | 'canvas'
+  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider'
   pluginUUID: string
   pluginVersion: string
   unitId: string
@@ -251,3 +254,142 @@ await this.registerDefinitions(payload)
 ```
 
 `registerDefinitions()` 会替换该插件此前注册的所有定义，因此传入的 payload 应包含当前插件希望暴露的完整 Library 与 Unit 集合。
+
+<!-- plugin-cycled-slider:start -->
+## Plugin cycled 与 slider Unit
+
+`PluginUnit.type` 支持：
+
+```ts
+type PluginUnitType = 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider'
+```
+
+`PluginUnitDefinitionRuntime` 额外支持：
+
+```ts
+interface PluginUnitDefinitionRuntime {
+  appearanceOverride?: PluginAppearanceOverride
+  functions?: PluginUnitDefinitionCycledFunction[]
+  slider?: PluginUnitDefinitionSliderConfig
+}
+
+interface PluginUnitDefinitionCycledFunction {
+  functionId: string
+  name?: string
+  data?: Record<string, any>
+  appearanceOverride?: PluginAppearanceOverride
+}
+
+interface PluginUnitDefinitionSliderConfig {
+  format: string
+  min: number
+  max: number
+  step?: number
+}
+```
+
+### appearanceOverride
+
+`appearanceOverride` 是对宿主默认外观的字段覆盖，不需要提供完整 `baseAppearance`。宿主在构建默认 Unit 时先创建默认外观，再应用插件提供的 override。
+
+`elements` 是数组，覆盖规则不同于普通对象：
+
+- override element 带 `identifier` 时，必须匹配默认外观中已有的 element，并只覆盖提供的字段。
+- override element 不带 `identifier` 时，表示追加一个完整新 element。
+- 带未知 `identifier` 的覆盖会被定义校验拒绝。
+
+该机制适用于 `standard`、`slider`，以及 `cycled.functions[].appearanceOverride`。
+
+### cycled
+
+`cycled` 是插件控制的多状态按键，适合播放/暂停、模式切换等场景。
+
+```ts
+this.createUnitTemplate({
+  unitId: '@acme/media/playback',
+  typeId: 'acme.media.playback',
+  name: 'Playback',
+  categoryId: 'media',
+  plugin: {
+    type: 'cycled',
+    pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion,
+    unitId: '@acme/media/playback',
+  },
+  hasFunctionEditor: true,
+  functions: [
+    {
+      functionId: 'play',
+      name: 'Play',
+      data: { command: 'play' },
+      appearanceOverride: {
+        elements: [
+          { identifier: 'title', text: 'Play' },
+        ],
+      },
+    },
+    {
+      functionId: 'pause',
+      name: 'Pause',
+      data: { command: 'pause' },
+      appearanceOverride: {
+        elements: [
+          { identifier: 'title', text: 'Pause' },
+        ],
+      },
+    },
+  ],
+})
+```
+
+规则：
+
+- `functions` 必填，且至少包含一个函数。
+- 每个函数必须有稳定且唯一的 `functionId`。
+- 前端不能新增、删除或排序函数。
+- 用户可以通过宿主已有外观编辑器修改每个函数的外观。
+- 函数外观不是 `data` 的一部分；运行时结构与内置 `cycled-key` 保持一致。
+- 插件函数编辑器通过 bridge 读取和写入当前选中函数的 `data`。
+
+设备点击后，宿主只把事件转发给拥有该 Unit 的插件，不会自动切换函数。插件业务处理成功后调用 `hostApi.unit.setFunction(serialNumber, unitUuid, functionId)` 更新设备状态；失败时应使用通知 API 报错。
+
+### slider
+
+`slider` 是插件控制的数值滑块，适合音量、亮度、温度等场景。
+
+```ts
+this.createUnitTemplate({
+  unitId: '@acme/media/volume',
+  typeId: 'acme.media.volume',
+  name: 'Volume',
+  categoryId: 'media',
+  plugin: {
+    type: 'slider',
+    pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion,
+    unitId: '@acme/media/volume',
+  },
+  slider: {
+    format: '%0.1f %%',
+    min: 0,
+    max: 100,
+    step: 0.1,
+  },
+  defaultData: {
+    value: 50,
+  },
+})
+```
+
+规则：
+
+- `slider` 配置必填。
+- `format` 使用一个 C-style 数字占位符，例如 `%0.1f %%`。
+- 不再使用 `decimals` 字段；显示精度从 `format` 中解析。
+- `min` 和 `max` 必须是有限数字，且 `min < max`。
+- `step` 可选；省略时宿主根据 `format` 的精度推断。
+- `step` 必须为正数，不能大于范围，并且必须能按显示精度整除范围。
+- 宿主和 SDK 会把值夹取并量化为 `min + round((value - min) / step) * step`。
+
+插件监听设备滑动事件后执行业务逻辑，并可调用 `hostApi.unit.setSliderValue(serialNumber, unitUuid, value)` 更新设备显示。
+<!-- plugin-cycled-slider:end -->

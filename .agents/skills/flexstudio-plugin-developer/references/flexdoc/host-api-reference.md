@@ -211,11 +211,13 @@ Topic 约定：
 权限：`unit`
 
 ```ts
-type UnitDeviceEventType = 'load' | 'unload' | 'touch' | 'pressed' | 'released'
+type UnitDeviceEventType = 'load' | 'unload' | 'touch' | 'pressed' | 'released' | 'changed'
 
 interface PluginUnitApi {
   on(typeId: string, event: UnitDeviceEventType, options?: RegisterEventOptions): Promise<void>
   off(typeId: string, event: UnitDeviceEventType, handler: PluginEventHandler): Promise<void>
+  setFunction(serialNumber: string, unitUuid: string, functionId: string): Promise<void>
+  setSliderValue(serialNumber: string, unitUuid: string, value: number): Promise<void>
 }
 ```
 
@@ -452,3 +454,62 @@ interface PluginElectronScreenApi {
 | 调用网络 API | `definitions`, `http`, `store`, `logger` |
 | 读写本地文件 | `definitions`, `file`, `logger` |
 | 访问剪贴板 | `definitions`, `electron.clipboard`, `ui` |
+
+<!-- plugin-cycled-slider:start -->
+## Plugin Unit Runtime API
+
+`hostApi.unit` 需要 `unit` 权限。权威接口见上方 Unit API；本节补充 plugin `cycled` 和 `slider` 的运行时语义。
+
+### cycled 状态更新
+
+`setFunction()` 只接受 `functionId`，不接受 function index。宿主会校验该 Unit 属于当前插件、类型是 `cycled`、`functionId` 存在，然后把新状态发布到目标设备。
+
+```ts
+await this.hostApi.unit.setFunction(
+  event.payload.serialNumber,
+  event.payload.uuid,
+  'pause',
+)
+```
+
+设备点击 plugin `cycled` Unit 时，宿主不会自行切换状态。插件应在业务动作成功后调用 `setFunction()`；失败时调用设备通知 API，例如：
+
+```ts
+await this.hostApi.device.showSnackbarMessage(event.payload.serialNumber, {
+  message: 'Unable to control player',
+  type: 'error',
+})
+```
+
+### slider 值更新
+
+`setSliderValue()` 会按该 Unit 注册的 `min`、`max`、`step` 和 `format` 夹取、量化、格式化，然后发布到设备。
+
+```ts
+await this.hostApi.unit.setSliderValue(
+  event.payload.serialNumber,
+  event.payload.uuid,
+  42.5,
+)
+```
+
+Slider `changed` 事件 payload 包含：
+
+```ts
+interface PluginSliderChangedEventPayload {
+  serialNumber: string
+  uuid: string
+  typeId: string
+  value: number
+  phase?: 'start' | 'change' | 'end'
+  min: number
+  max: number
+  step: number
+  format: string
+  displayText: string
+  data?: Record<string, any>
+}
+```
+
+宿主会根据注册定义重新校验和规范化设备上报值，再转发给拥有该 Unit 的插件。不要通过原始 `device.plugin.*` wildcard 监听其它插件的 Unit 事件；插件 Unit 事件按 owner 隔离，推荐始终使用 `hostApi.unit.on()` 或 `FlexPluginBase` helper。
+<!-- plugin-cycled-slider:end -->

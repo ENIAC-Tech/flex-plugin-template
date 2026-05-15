@@ -1,6 +1,6 @@
 ---
 name: flexstudio-plugin-developer
-description: Develop, debug, maintain, and release FlexStudio v2 plugins using FlexSDK2, FlexCLI plugin-v2, plugin manifest.json, Unit definitions, backend runtime, frontend iframe bridge, Host API permissions, dependency APIs, and marketplace release workflows. Use when working inside a FlexStudio plugin project, creating or modifying plugin code, checking SDK or CLI APIs, diagnosing plugin loading/RPC/permission issues, or preparing a plugin release.
+description: Develop, debug, maintain, and release FlexStudio v2 plugins using FlexSDK2, FlexCLI plugin-v2, plugin manifest.json, Unit definitions including cycled/slider units, backend runtime, frontend iframe bridge, Host API permissions, dependency APIs, and marketplace release workflows. Use when working inside a FlexStudio plugin project, creating or modifying plugin code, checking SDK or CLI APIs, diagnosing plugin loading/RPC/permission issues, or preparing a plugin release.
 ---
 
 # FlexStudio Plugin Developer

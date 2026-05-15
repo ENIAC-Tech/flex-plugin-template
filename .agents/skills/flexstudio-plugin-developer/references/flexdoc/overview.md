@@ -106,3 +106,18 @@ FlexStudio 主进程的插件系统核心职责包括：
 本地开发通常使用 `flexcli plugin-v2 dev <plugin-dir>`。CLI 会构建插件、通过 FlexStudio 的开发控制 WebSocket 挂载插件源目录、订阅日志、监听文件变化，并在变化后触发重载。
 
 正式发布不通过 CLI 直接上传市场。插件必须开源在 GitHub，并通过 GitHub Release 发布 `.flexplugin` 包。官方 reusable workflow 会构建、打包、上传 Release Asset，并通过 webhook 通知插件市场。插件市场只把 webhook 视为通知，实际插件包会由服务端独立从 GitHub Release 拉取。
+
+<!-- plugin-cycled-slider:start -->
+## Plugin cycled 与 slider Unit
+
+插件 Unit 现在支持五种运行形态：`standard`、`custom`、`canvas`、`cycled`、`slider`。
+
+`cycled` 和 `slider` 不是独立的渲染体系，而是复用宿主已有 Unit 架构：
+
+- `cycled` 复用内置 `cycled-key` 的多状态外观和编辑体验，但函数列表由插件定义固定提供，用户不能新增、删除或排序函数。
+- `slider` 复用内置音量滑块的外观和交互，范围、步进和显示格式由插件定义提供。
+- 插件可通过后端 Unit API 监听设备事件，并主动更新设备显示状态。
+- 宿主只负责转发和校验，不会替插件执行业务状态切换。
+
+典型数据流是：设备上报交互事件 -> 宿主按 Unit owner 转发给插件 -> 插件执行业务逻辑 -> 插件通过 Host API 更新设备状态或通过通知 API 报错。
+<!-- plugin-cycled-slider:end -->
