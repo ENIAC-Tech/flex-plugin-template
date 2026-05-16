@@ -176,6 +176,10 @@ const result = await this.hostApi.plugin.callDependency(
 )
 ```
 
+通过 `FlexPluginBase` 调用 `callDependency()` 时，缺失、未启用、未加载、未找到或未声明为直接依赖的目标插件默认会触发
+`reason: "missingDependency"` 的 fatal 上报并终止当前插件后端进程。只有插件明确支持缺少依赖时的降级模式时，才应调用
+`this.setMissingDependencyAutoTerminate(false)` 显式禁用该策略。
+
 更多设计约束、暴露方式和错误语义见 [插件依赖 API](./dependency-api.md)。
 
 ## Bus API

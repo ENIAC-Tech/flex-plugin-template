@@ -150,6 +150,26 @@ const result = await this.hostApi.plugin.callDependency(
 - 参数和返回值必须可序列化，不支持函数、类实例引用、循环引用或进程内对象句柄。
 - 宿主会等待依赖插件响应；目标插件退出、崩溃、降级或超时都会使调用失败。
 
+## 缺失依赖的默认终止策略
+
+使用 FlexSDK2 的 `FlexPluginBase` 时，SDK 会检测
+`this.hostApi.plugin.callDependency()` 的依赖可用性错误。目标依赖未安装、未启用、未加载、
+未找到，或没有声明为直接依赖时，SDK 默认会向宿主上报 `reason: "missingDependency"` 的
+`plugin-fatal`，然后终止当前插件后端进程。FlexStudio 会把调用方插件标记为降级，而不是反复重启。
+
+只有在插件明确能在缺少该依赖时继续降级运行时，才应显式禁用这个策略：
+
+```ts
+export default class ConsumerPlugin extends FlexPluginBase {
+  constructor() {
+    super()
+    this.setMissingDependencyAutoTerminate(false)
+  }
+}
+```
+
+禁用自动终止后，`callDependency()` 会按原样抛出宿主错误，插件需要自行捕获并实现 fallback。
+
 ## 常见错误
 
 | 错误 | 含义 | 处理方式 |
