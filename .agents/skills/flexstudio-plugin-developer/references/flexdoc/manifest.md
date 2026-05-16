@@ -177,6 +177,7 @@ interface PluginEntryPoints {
 | `definitions` | 注册插件 Library 与 Unit 定义。 |
 | `bus` | 订阅或取消订阅宿主事件总线。 |
 | `unit` | Unit 事件订阅、Canvas 推帧等 Unit 能力。 |
+| `chart` | 注册并发布插件自定义 Chart 性能/传感器数据源，供内置 Chart Unit 选择和显示。 |
 | `ui` | 宿主 UI 消息，例如 snackbar。 |
 | `pluginApi` | 调用直接依赖插件暴露的依赖 API。 |
 

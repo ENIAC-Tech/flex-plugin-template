@@ -322,6 +322,27 @@ flexcli plugin-v2 pack --dist-dir dist --platform darwin-arm64
 - Release Asset 是否包含 `.flexplugin`。
 - 市场审核状态是否允许更新。
 
+## 插件更新或 Unit 迁移失败
+
+症状可能包括：更新后旧项目里的插件 Unit 数据没有变化、Unit 显示旧字段、打开项目时提示迁移失败，或插件管理页显示有更新但无法更新。
+
+检查：
+
+- 插件是否通过 Marketplace 安装；本地开发插件没有 `marketplaceListingId`，不会走市场更新入口。
+- 旧 Unit 的 `plugin.pluginVersion` 是否低于当前已安装插件版本。
+- 插件后端是否启用；`migrateUnit()` 只会在目标插件已加载且启用时调用。
+- `migrateUnit()` 是否对目标 `unitId` 返回了 `undefined`，导致宿主按 no-op 处理。
+- 返回 `{ data }` 时是否返回了完整可序列化对象。
+- 返回 `{ unit }` 时是否错误改变了 `uuid`、`typeId`、`plugin.pluginUUID`、`plugin.unitId` 或 `geometry`。
+- 迁移逻辑是否幂等，是否正确处理旧数据缺失字段。
+
+建议：
+
+- 在 `unit.data` 中保存 `schemaVersion`，按版本分支迁移。
+- 在迁移 Hook 中只改插件拥有的数据，不要改变用户布局。
+- 迁移失败时先查看插件日志，再用旧项目复现并单独测试相关 Unit。
+- 如果市场新版本没有出现，先按“市场没有收到新版本”排查 Release 和 webhook。
+
 ## 删除插件失败
 
 如果插件被其他插件依赖，市场不允许直接删除。处理方式：

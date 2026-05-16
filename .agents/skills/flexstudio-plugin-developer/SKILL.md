@@ -1,6 +1,6 @@
 ---
 name: flexstudio-plugin-developer
-description: Develop, debug, maintain, and release FlexStudio v2 plugins using FlexSDK2, FlexCLI plugin-v2, plugin manifest.json, Unit definitions including cycled/slider units, backend runtime, frontend iframe bridge, Host API permissions, dependency APIs, and marketplace release workflows. Use when working inside a FlexStudio plugin project, creating or modifying plugin code, checking SDK or CLI APIs, diagnosing plugin loading/RPC/permission issues, or preparing a plugin release.
+description: Develop, debug, maintain, and release FlexStudio v2 / FlexDesigner2 plugins using FlexSDK2, FlexCLI plugin-v2, plugin manifest.json, Unit definitions including cycled/slider/value-label/label units, backend runtime, frontend iframe bridge, Host API permissions, dependency APIs, marketplace release workflows, and plugin unit migration/update hooks. Use when working inside a FlexStudio plugin project, creating or modifying plugin code, changing Unit data schema or migration logic, checking SDK or CLI APIs, diagnosing plugin loading/RPC/permission/migration issues, or preparing a plugin release.
 ---
 
 # FlexStudio Plugin Developer
@@ -25,6 +25,7 @@ If the task needs source-code confirmation, read `references/source-map.md` to l
 - Keep generated plugin projects compatible with the template structure unless the user explicitly asks for a custom structure.
 - When docs and local code disagree, prefer the local package/API version in the plugin project, then note the mismatch.
 
+- When changing Unit data schema, check `migrateUnit()` and the Unit migration contract before editing code. Missing hooks are no-op; invalid migration results leave existing Unit data unchanged.
 ## Reference Map
 
 - Task routing: `references/task-router.md`

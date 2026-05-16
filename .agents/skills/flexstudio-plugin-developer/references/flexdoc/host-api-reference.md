@@ -22,6 +22,7 @@ await this.hostApi.ui.showSnackbarMessage({ message: 'Done', type: 'success' })
 | `hostApi.bus` | `bus` | 宿主事件总线。 |
 | `hostApi.unit` | `unit` | Unit 设备事件。 |
 | `hostApi.canvas` | `unit` | Canvas Unit 推帧。 |
+| `hostApi.chart` | `chart` | 注册并发布插件自定义 Chart 性能/传感器数据源。 |
 | `hostApi.ui` | `ui` | FlexStudio 主 UI 消息。 |
 | `hostApi.device` | `device` | 连接设备配置和能力查询。 |
 | `hostApi.electron.*` | 对应 `electron.*` | 受限 Electron 能力。 |
@@ -218,6 +219,9 @@ interface PluginUnitApi {
   off(typeId: string, event: UnitDeviceEventType, handler: PluginEventHandler): Promise<void>
   setFunction(serialNumber: string, unitUuid: string, functionId: string): Promise<void>
   setSliderValue(serialNumber: string, unitUuid: string, value: number): Promise<void>
+  setValueLabelData(serialNumber: string, unitUuid: string, value: number | string): Promise<void>
+  setLabelText(serialNumber: string, unitUuid: string, text: string): Promise<void>
+  setUnitIcon(serialNumber: string, unitUuid: string, icon: string | number): Promise<void>
 }
 ```
 
@@ -227,6 +231,92 @@ interface PluginUnitApi {
 await this.onUnitEvent('acme.open-url', 'pressed', async (event) => {
   this.logger.info('pressed', event.payload)
 })
+```
+
+## Chart API
+
+权限：`chart`
+
+`hostApi.chart` 用于把插件自定义性能/传感器数据接入内置 Chart Unit 的数据树。实时数据只保存在 host runtime cache 中，不写入项目文件或 `defaultData`；插件禁用、卸载、进程退出或崩溃时，宿主会清理该插件注册的数据源和 entries。
+
+`registerDataSource()` 以插件为所有者注册或替换一个数据源。每个插件最多 16 个数据源；`sourceId` 是插件内本地 ID，长度 1-80，只允许字母、数字、`.`、`_`、`-`。`name` 长度 1-80，`icon` 长度 1-80。宿主生成全局 provider id，插件不能指定或覆盖 provider metadata。
+
+`publishEntries()` 每次发布的是整个 data source 的快照，不是增量 patch；同一 source 最多 256 个 entries。entry 的 `key` 是插件内本地 key，长度 1-120，规则同 `sourceId`，同一 source 内区分大小写且必须唯一。宿主生成全局 entry key，插件不能提供 `providerId`、`providerName`、`providerKind`、`ownerPluginUUID`、`localKey`、`category`、`subCategory`、`formattedValue`、`historyValues` 或 `maxLength` 等宿主字段。
+
+调用频率按 source 限流：同一 source 最小处理间隔为 250ms。间隔内的多次发布只保留最新 pending 快照；renderer 更新另有约 100ms debounce，并会推送当前完整 flat entries payload。
+
+`groupPath` 支持多级分组，最大深度 6，每段长度 1-80；Chart 选择器会显示为 `Plugins -> 数据源 -> groupPath... -> entry`。如果某个选择器启用 plugin-only 模式，会隐藏 `Plugins` 顶层，直接从数据源开始显示。
+
+`type` 决定默认格式化和图标；`unit`、`precision`、`min`、`max` 可覆盖显示单位、精度和量程。`name` 长度 1-100，`unit` 长度 1-16，`precision` 必须是 0-6 的整数；`min`/`max` 必须同时提供，且为有限数字并满足 `min < max`。插件提供 `unit` 时，`rawValue`、`min`、`max` 都按该显示单位解释。
+
+`formattedValue` 和历史值由宿主维护，插件只发布当前 `rawValue`。
+
+```ts
+type PluginChartSensorType =
+  | 'Clock'
+  | 'Temperature'
+  | 'Power'
+  | 'Voltage'
+  | 'Load'
+  | 'Fan'
+  | 'Throughput'
+  | 'Data'
+  | 'SmallData'
+  | 'Level'
+  | 'Control'
+  | 'Factor'
+
+interface PluginChartDataSourceOptions {
+  sourceId: string
+  name: string
+  icon?: string
+}
+
+interface PluginChartEntryInput {
+  key: string
+  name: string
+  type: PluginChartSensorType
+  rawValue: number
+  groupPath?: string[]
+  icon?: string
+  unit?: string
+  precision?: number
+  min?: number
+  max?: number
+}
+
+interface PluginChartApi {
+  registerDataSource(options: PluginChartDataSourceOptions): Promise<void>
+  unregisterDataSource(sourceId: string): Promise<void>
+  publishEntries(sourceId: string, entries: PluginChartEntryInput[]): Promise<void>
+}
+```
+
+示例：
+
+```ts
+await this.hostApi.chart.registerDataSource({
+  sourceId: 'home-assistant',
+  name: 'Home Assistant',
+  icon: 'mdi-home-thermometer',
+})
+
+await this.hostApi.chart.publishEntries('home-assistant', [
+  {
+    key: 'living-room.temperature',
+    name: 'Living Room Temperature',
+    type: 'Temperature',
+    rawValue: 23.4,
+    groupPath: ['Living Room', 'Climate'],
+    icon: 'mdi-thermometer',
+    unit: '°C',
+    precision: 1,
+    min: 0,
+    max: 40,
+  },
+])
+
+await this.hostApi.chart.unregisterDataSource('home-assistant')
 ```
 
 ## Canvas API
@@ -451,6 +541,7 @@ interface PluginElectronScreenApi {
 | 有编辑器并保存插件配置 | `definitions`, `store`, `ui` |
 | 监听 Unit 按键或触摸事件 | `definitions`, `unit`, `logger` |
 | Canvas Unit | `definitions`, `unit`, `logger` |
+| 发布 Chart 数据源 | `chart`, `logger`；如果数据来自网络、系统或文件，再追加 `http`、`system` 或 `file`；只有同时注册 Unit 时才需要 `definitions` |
 | 调用网络 API | `definitions`, `http`, `store`, `logger` |
 | 读写本地文件 | `definitions`, `file`, `logger` |
 | 访问剪贴板 | `definitions`, `electron.clipboard`, `ui` |
@@ -458,7 +549,7 @@ interface PluginElectronScreenApi {
 <!-- plugin-cycled-slider:start -->
 ## Plugin Unit Runtime API
 
-`hostApi.unit` 需要 `unit` 权限。权威接口见上方 Unit API；本节补充 plugin `cycled` 和 `slider` 的运行时语义。
+`hostApi.unit` 需要 `unit` 权限。权威接口见上方 Unit API；本节补充 plugin `cycled`、`slider`、`value-label` 和 `label` 的运行时语义。
 
 ### cycled 状态更新
 
@@ -512,4 +603,58 @@ interface PluginSliderChangedEventPayload {
 ```
 
 宿主会根据注册定义重新校验和规范化设备上报值，再转发给拥有该 Unit 的插件。不要通过原始 `device.plugin.*` wildcard 监听其它插件的 Unit 事件；插件 Unit 事件按 owner 隔离，推荐始终使用 `hostApi.unit.on()` 或 `FlexPluginBase` helper。
+
+### value-label 数据更新
+
+`setValueLabelData()` 只作用于已加载、属于当前插件、且定义类型为 `value-label` 的 Unit。宿主会使用注册定义里的 `valueLabel` 配置生成最终显示文本，并发布给目标设备。
+
+```ts
+await this.hostApi.unit.setValueLabelData(
+  event.payload.serialNumber,
+  event.payload.uuid,
+  23.5,
+)
+```
+
+规则：
+
+- `format` 模式只接受有限 `number`，并按注册的 `format` 生成 `displayText`。
+- `custom` 模式接受 `number | string`，不会检查运行时文本是否都存在于 atlas 中；缺失字符由设备端显示为方框。
+- 该 API 要求 `unit` 权限，并要求目标 Unit 已加载到指定设备。
+- `value-label` 不产生设备端 `changed` 事件；插件需要主动调用该 API 更新显示。
+
+### label 文本更新
+
+`setLabelText()` 只作用于已加载、属于当前插件、且定义类型为 `label` 的 Unit。文本必须是字符串，Unicode 内容会原样发送给设备，由设备端用定义里的 `fontFamily` 渲染。
+
+```ts
+await this.hostApi.unit.setLabelText(
+  event.payload.serialNumber,
+  event.payload.uuid,
+  '在线',
+)
+```
+
+`label` 不产生设备端 `changed` 事件；插件需要主动调用该 API 更新显示。
+
+### runtime 主图标更新
+
+`setUnitIcon()` 只作用于已加载、属于当前插件、且定义类型为 `value-label` 或 `label` 的 Unit。宿主会把输入标准化为 MDI codepoint payload，再发布给设备端用 MDI 字体绘制 primary icon。
+
+```ts
+await this.hostApi.unit.setUnitIcon(
+  event.payload.serialNumber,
+  event.payload.uuid,
+  'mdi-volume-up',
+)
+```
+
+支持的图标输入：
+
+- MDI 名称：`mdi-volume-up` 或 `volume-up`。
+- 数字 codepoint：`0xe050`。
+- 字符串 codepoint：`0xE050`、`U+E050`。
+- 私有区单字符，或私有区裸十六进制，例如 `E050`。
+
+未知 MDI 名称、空字符串、代理区 codepoint、越界 codepoint 会被拒绝。裸十六进制只有在落入 Unicode 私有区时才按 codepoint 解析，否则按未知 MDI 名称处理。
 <!-- plugin-cycled-slider:end -->

@@ -88,6 +88,8 @@ interface PluginUnitDefinitionRuntime {
   appearanceOverride?: PluginAppearanceOverride
   functions?: PluginUnitDefinitionCycledFunction[]
   slider?: PluginUnitDefinitionSliderConfig
+  valueLabel?: PluginUnitDefinitionValueLabelConfig
+  label?: PluginUnitDefinitionLabelConfig
   defaultData?: Record<string, any>
   platforms?: ('win32' | 'darwin' | 'linux')[]
   libraryUUID?: string
@@ -105,6 +107,11 @@ interface PluginUnitDefinitionRuntime {
 | `hasFunctionEditor` | 是否提供功能编辑器页面。 |
 | `hasAppearanceEditor` | 是否提供外观编辑器页面。 |
 | `hasView` | 是否提供运行视图 iframe。 |
+| `appearanceOverride` | 可选宿主默认外观覆盖。 |
+| `functions` | `cycled` Unit 的固定函数列表。 |
+| `slider` | `slider` Unit 的数值范围、步进和显示格式。 |
+| `valueLabel` | `value-label` Unit 的 format/custom 模式配置。 |
+| `label` | `label` Unit 的设备端 TTF 字体配置。 |
 | `defaultData` | 创建 Unit 实例时的默认数据。 |
 | `platforms` | Unit 支持的平台，使用 `win32`、`darwin`、`linux`。 |
 | `libraryUUID` | Unit 所属 Library。省略时使用 payload 中第一个 Library。 |
@@ -113,7 +120,7 @@ interface PluginUnitDefinitionRuntime {
 
 ```ts
 interface PluginUnit {
-  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider'
+  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider' | 'value-label' | 'label'
   pluginUUID: string
   pluginVersion: string
   unitId: string
@@ -122,10 +129,34 @@ interface PluginUnit {
 
 | 字段 | 说明 |
 | --- | --- |
-| `type` | Unit 类型：`standard`、`custom` 或 `canvas`。 |
+| `type` | Unit 类型：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label` 或 `label`。 |
 | `pluginUUID` | 注册该 Unit 的插件 UUID，必须与当前插件一致。 |
 | `pluginVersion` | 当前插件版本。通常由 `FlexPluginBase` 从加载上下文填充。 |
 | `unitId` | 插件内 Unit ID，必须与外层 `unitId` 一致。 |
+
+## Unit 数据版本与迁移
+
+`defaultData` 只影响新建 Unit，不会自动改写项目里已经存在的 Unit。插件发布新版本时，如果 `unit.data` 的结构发生破坏性变化，应在数据中维护插件自己的 schema 版本，并在后端实现 `migrateUnit()`。
+
+推荐写法：
+
+```ts
+this.createUnitTemplate({
+  unitId: '@acme/demo-plugin/action-button',
+  typeId: 'acme.action-button',
+  name: 'Action Button',
+  categoryId: 'actions',
+  defaultData: {
+    schemaVersion: 2,
+    label: 'Action',
+    action: 'open-url',
+  },
+})
+```
+
+宿主不会推断旧数据结构，也不会根据新的 `defaultData` 自动补字段。迁移由插件自己的 `migrateUnit(request)` 决定：常见场景返回 `{ data }`，只替换 `unit.data`；只有确实需要改 `name`、`icon`、`config` 或 `appearance` 时才返回完整 `{ unit }`。
+
+迁移结果必须保持 Unit 身份和布局稳定：不能改变 `uuid`、`typeId`、`plugin.pluginUUID`、`plugin.unitId` 或 `geometry`。迁移成功后，宿主会把 `unit.plugin.pluginVersion` 更新到当前插件版本，并刷新 preset 的 `pluginDependencies` 快照。
 
 ## Unit 类型
 
@@ -227,6 +258,9 @@ FlexStudio 注册定义时会执行结构校验和一致性校验：
 - `custom` Unit 必须设置 `hasView: true`。
 - `canvas` Unit 不能设置 `hasView: true`。
 - `canvas` Unit 不能设置 `hasAppearanceEditor: true`。
+- `value-label` Unit 必须设置 `valueLabel`，不能设置 `functions`、`slider`、`label` 或 `hasView: true`。
+- `label` Unit 必须设置 `label`，不能设置 `functions`、`slider`、`valueLabel` 或 `hasView: true`。
+- 其它 Unit 类型不能携带不属于自身类型的 `functions`、`slider`、`valueLabel` 或 `label` 配置。
 
 可以在构建或 CI 中使用 CLI 验证定义：
 
@@ -256,12 +290,19 @@ await this.registerDefinitions(payload)
 `registerDefinitions()` 会替换该插件此前注册的所有定义，因此传入的 payload 应包含当前插件希望暴露的完整 Library 与 Unit 集合。
 
 <!-- plugin-cycled-slider:start -->
-## Plugin cycled 与 slider Unit
+## Plugin cycled、slider、value-label 与 label Unit
 
 `PluginUnit.type` 支持：
 
 ```ts
-type PluginUnitType = 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider'
+type PluginUnitType =
+  | 'standard'
+  | 'custom'
+  | 'canvas'
+  | 'cycled'
+  | 'slider'
+  | 'value-label'
+  | 'label'
 ```
 
 `PluginUnitDefinitionRuntime` 额外支持：
@@ -271,6 +312,8 @@ interface PluginUnitDefinitionRuntime {
   appearanceOverride?: PluginAppearanceOverride
   functions?: PluginUnitDefinitionCycledFunction[]
   slider?: PluginUnitDefinitionSliderConfig
+  valueLabel?: PluginUnitDefinitionValueLabelConfig
+  label?: PluginUnitDefinitionLabelConfig
 }
 
 interface PluginUnitDefinitionCycledFunction {
@@ -286,6 +329,14 @@ interface PluginUnitDefinitionSliderConfig {
   max: number
   step?: number
 }
+
+type PluginUnitDefinitionValueLabelConfig =
+  | { mode: 'format'; format: string; customCharacters?: string }
+  | { mode: 'custom'; customCharacters?: string }
+
+interface PluginUnitDefinitionLabelConfig {
+  fontFamily: 'puhuiti' | 'consola'
+}
 ```
 
 ### appearanceOverride
@@ -298,7 +349,7 @@ interface PluginUnitDefinitionSliderConfig {
 - override element 不带 `identifier` 时，表示追加一个完整新 element。
 - 带未知 `identifier` 的覆盖会被定义校验拒绝。
 
-该机制适用于 `standard`、`slider`，以及 `cycled.functions[].appearanceOverride`。
+该机制适用于 `standard`、`slider`、`value-label`、`label`，以及 `cycled.functions[].appearanceOverride`。`value-label` 和 `label` 的 primary text / primary icon 是设备端运行时元素；外观覆盖可以调整它们的位置、字号、颜色等样式，但设备预渲染 PNG 不会把这两个元素画进去。
 
 ### cycled
 
@@ -392,4 +443,86 @@ this.createUnitTemplate({
 - 宿主和 SDK 会把值夹取并量化为 `min + round((value - min) / step) * step`。
 
 插件监听设备滑动事件后执行业务逻辑，并可调用 `hostApi.unit.setSliderValue(serialNumber, unitUuid, value)` 更新设备显示。
+
+### value-label
+
+`value-label` 是插件控制的数值显示 Unit。它没有 slider 的激活态和拖动事件；插件只需要在后端发送数值或数值型字符串，设备端使用宿主预生成的 atlas 本地绘制 primary text，因此不需要用 `custom` 或 `canvas` 实时推图。
+
+`value-label` 有两种模式：
+
+- `format`：`format` 必填，使用一个 C-style `%f` 数字占位符，例如 `%0.1f C`。运行时只接受有限 `number`；宿主格式化后把最终 `displayText` 发给设备。charset 自动由 `0123456789.-` 加 format 字面量生成，忽略 `customCharacters`。
+- `custom`：运行时接受 `number | string`。charset 由 `0123456789.` 加用户声明的 `customCharacters` 生成；最多允许 128 个去重后的自定义 grapheme。运行时文本中 atlas 缺失的字符不会导致更新失败，设备端显示方框占位。
+
+```ts
+this.createUnitTemplate({
+  unitId: 'temperature',
+  typeId: '@demo/sensors:temperature',
+  name: 'Temperature',
+  categoryId: '@demo/sensors',
+  plugin: {
+    type: 'value-label',
+    pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion,
+    unitId: 'temperature',
+  },
+  valueLabel: { mode: 'format', format: '%0.1f C' },
+  defaultData: { value: 23.5 },
+})
+```
+
+```ts
+this.createUnitTemplate({
+  unitId: 'status-code',
+  typeId: '@demo/sensors:status-code',
+  name: 'Status Code',
+  categoryId: '@demo/sensors',
+  plugin: {
+    type: 'value-label',
+    pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion,
+    unitId: 'status-code',
+  },
+  valueLabel: { mode: 'custom', customCharacters: '-%NA' },
+  defaultData: { value: 'N/A' },
+})
+```
+
+规则：
+
+- `valueLabel` 配置必填。
+- 不能同时声明 `functions`、`slider` 或 `label`。
+- 不能设置 `hasView: true`。
+- primary text 和 primary icon 由设备端运行时绘制；预渲染 PNG 只包含背景、边框、图片和非 primary 元素。
+- `value-label` 不新增设备端 `changed` 事件。插件通过 `hostApi.unit.setValueLabelData()` 和 `hostApi.unit.setUnitIcon()` 主动更新设备显示。
+
+### label
+
+`label` 是插件控制的 Unicode 文本显示 Unit。它不使用 atlas，而是使用设备端预置 TTF 字体渲染 primary text，适合状态消息、短文本、中文提示和代码样式文本。
+
+```ts
+this.createUnitTemplate({
+  unitId: 'message',
+  typeId: '@demo/text:message',
+  name: 'Message',
+  categoryId: '@demo/text',
+  plugin: {
+    type: 'label',
+    pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion,
+    unitId: 'message',
+  },
+  label: { fontFamily: 'puhuiti' },
+  defaultData: { text: '在线' },
+})
+```
+
+规则：
+
+- `label` 配置必填。
+- `fontFamily` 只能是 `puhuiti` 或 `consola`。
+- 不能同时声明 `functions`、`slider` 或 `valueLabel`。
+- 不能设置 `hasView: true`。
+- primary text 的字体族被锁定为定义里的字体；字号、颜色、粗体、斜体等外观仍可编辑。
+- primary text 和 primary icon 由设备端运行时绘制；预渲染 PNG 不包含这两个元素。
+- `label` 不新增设备端 `changed` 事件。插件通过 `hostApi.unit.setLabelText()` 和 `hostApi.unit.setUnitIcon()` 主动更新设备显示。
 <!-- plugin-cycled-slider:end -->

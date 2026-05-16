@@ -14,7 +14,7 @@ FlexStudio 插件系统由五个部分组成：
 
 ## 运行模型
 
-插件由 `manifest.json` 声明身份、入口、权限、平台、设备、依赖和资源。FlexStudio 安装插件后，会读取 manifest，校验插件结构，将插件状态写入本地仓库，并在插件启用时加载插件定义。
+插件由 `manifest.json` 声明身份、入口、权限、平台、设备、依赖和资源。FlexStudio 安装插件后，会读取 manifest，校验插件结构，将插件状态写入本地仓库，并在插件启用时加载插件定义。通过插件市场安装的插件还会在本地状态中记录 `marketplaceListingId`，用于详情页跳转、更新检查和后续升级。
 
 插件后端运行在独立进程中。FlexStudio 主进程负责创建后端进程、注入 Host API、转发日志、处理插件生命周期，并在插件退出或重载时清理资源。插件后端通过 SDK 的 `FlexPluginBase` 注册定义、监听事件、调用 Host API、处理前端 RPC。
 
@@ -40,6 +40,18 @@ Host API 不是自由调用接口。每次调用都会经过 Capability Registry
 
 依赖 API 不会自动授予传递性调用权限。`plugin-a -> plugin-b -> plugin-c` 中，`plugin-a` 只能调用 `plugin-b`；如果需要使用 `plugin-c` 的能力，应由 `plugin-b` 暴露自己的 API 进行组合或转发。开发细节见 [插件依赖 API](./dependency-api.md)。
 
+### 项目中的插件依赖快照
+
+项目不会维护一份全局插件清单。每个 preset 会维护自己的 `pluginDependencies` 快照，记录该 preset 中正式 Unit 使用到的插件 UUID、版本、市场 listing id、Unit 数量和更新时间。项目打开时只汇总各 preset 的快照，不再遍历所有 Unit 重新推导依赖。
+
+这样做是为了支持 preset 作为独立内容分享：preset 自带所需插件信息，导入到任何项目后都能参与缺失插件、插件版本不足和 Unit 数据迁移检查。编辑 preset、添加或删除插件 Unit、替换嵌套 layoutData 时，宿主会刷新对应 preset 的快照。
+
+打开项目时，FlexStudio 会加载本机已安装插件并检查汇总后的依赖：
+
+- 缺失插件：提示用户安装，确认后进入 Marketplace 插件页或以插件 UUID 搜索。
+- 已安装但版本低于 preset 需求：提示用户更新，确认后进入对应插件详情页。
+- 已安装版本高于 preset 内 Unit 记录的版本：先尝试执行 Unit 迁移 Hook，再继续缺失/更新检查。
+
 ## 生命周期
 
 典型生命周期如下：
@@ -51,13 +63,16 @@ Host API 不是自由调用接口。每次调用都会经过 Capability Registry
 5. 渲染进程查询当前可用的插件 Unit，并在资源面板、编辑器和运行视图中展示。
 6. 用户打开插件页面时，渲染进程创建 iframe 并建立桥接通道。
 7. 插件页面通过前端桥接读取或更新 Unit 数据，必要时通过 `backendRpc()` 调用插件后端。
-8. 插件被禁用、卸载或重载时，FlexStudio 调用 `onUnload()`，关闭后端进程，注销定义和事件订阅。
+8. 插件从市场更新完成后，FlexStudio 会重新加载插件，并对当前项目中旧版本插件 Unit 调用可选的 `migrateUnit()` Hook。
+9. 打开项目时，如果 preset 依赖快照显示项目内存在旧版本插件 Unit，FlexStudio 会对已安装的新版本插件执行同一套 Unit 迁移流程。
+10. 插件被禁用、卸载或重载时，FlexStudio 调用 `onUnload()`，关闭后端进程，注销定义和事件订阅。
 
 ## 主进程职责
 
 FlexStudio 主进程的插件系统核心职责包括：
 
 - 插件安装、卸载、启用、禁用、重载。
+- 插件市场更新检查、安装来源记录和更新提示。
 - 插件仓库状态持久化。
 - manifest 读取与校验。
 - 插件依赖检查和依赖 API 调用路由。
@@ -89,6 +104,10 @@ FlexStudio 主进程的插件系统核心职责包括：
 | `standard` | FlexStudio 默认 Unit 视图 | 功能编辑器、外观编辑器 | 快捷动作、系统命令、HTTP 请求等逻辑型 Unit。 |
 | `custom` | 插件提供的 `unitView` iframe | 功能编辑器、外观编辑器 | 需要完全自定义前端运行视图的 Unit。 |
 | `canvas` | 无 iframe，由后端推送图片帧 | 功能编辑器 | 后端生成画面并推送到设备屏幕的 Unit。 |
+| `cycled` | FlexStudio 默认多状态视图 | 功能编辑器、外观编辑器 | 插件控制的播放/暂停、模式切换等多状态按键。 |
+| `slider` | FlexStudio 默认滑块视图 | 功能编辑器、外观编辑器 | 插件控制的音量、亮度、温度等数值滑块。 |
+| `value-label` | FlexStudio 预览运行时文本；设备端用 atlas 绘制 | 功能编辑器、外观编辑器 | 插件控制的数值显示，不需要 canvas 实时推图。 |
+| `label` | FlexStudio 预览运行时文本；设备端用预置 TTF 绘制 | 功能编辑器、外观编辑器 | 插件控制的 Unicode 文本显示。 |
 
 ## 权限模型
 
@@ -108,16 +127,18 @@ FlexStudio 主进程的插件系统核心职责包括：
 正式发布不通过 CLI 直接上传市场。插件必须开源在 GitHub，并通过 GitHub Release 发布 `.flexplugin` 包。官方 reusable workflow 会构建、打包、上传 Release Asset，并通过 webhook 通知插件市场。插件市场只把 webhook 视为通知，实际插件包会由服务端独立从 GitHub Release 拉取。
 
 <!-- plugin-cycled-slider:start -->
-## Plugin cycled 与 slider Unit
+## Plugin cycled、slider、value-label 与 label Unit
 
-插件 Unit 现在支持五种运行形态：`standard`、`custom`、`canvas`、`cycled`、`slider`。
+插件 Unit 现在支持七种运行形态：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label`、`label`。
 
-`cycled` 和 `slider` 不是独立的渲染体系，而是复用宿主已有 Unit 架构：
+`cycled`、`slider`、`value-label` 和 `label` 不是独立的插件 iframe 渲染体系，而是复用宿主已有 Unit 架构：
 
 - `cycled` 复用内置 `cycled-key` 的多状态外观和编辑体验，但函数列表由插件定义固定提供，用户不能新增、删除或排序函数。
 - `slider` 复用内置音量滑块的外观和交互，范围、步进和显示格式由插件定义提供。
+- `value-label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用宿主生成的 atlas 本地绘制。
+- `label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用预置 `puhuiti` 或 `consola` TTF 绘制。
 - 插件可通过后端 Unit API 监听设备事件，并主动更新设备显示状态。
-- 宿主只负责转发和校验，不会替插件执行业务状态切换。
+- 宿主只负责转发、校验、格式化和生成设备渲染元数据，不会替插件执行业务状态切换。
 
 典型数据流是：设备上报交互事件 -> 宿主按 Unit owner 转发给插件 -> 插件执行业务逻辑 -> 插件通过 Host API 更新设备状态或通过通知 API 报错。
 <!-- plugin-cycled-slider:end -->

@@ -55,6 +55,65 @@ abstract getDefinitions(): Promise<PluginDefinitionsPayload>
 5. 插件运行，处理事件、RPC、Host API 调用。
 6. 插件禁用、卸载或重载时，FlexStudio 调用 `onUnload()` 并关闭进程。
 
+## Unit 迁移 Hook
+
+插件更新后，旧项目里已经添加的插件 Unit 不会重新用 `defaultData` 创建。FlexStudio 会扫描当前项目 preset 中的旧版本插件 Unit，并在插件后端启用后调用可选的 `migrateUnit()` 实例方法。插件未实现该方法时视为 no-op，宿主仍会把 Unit 的 `plugin.pluginVersion` 更新到目标版本。
+
+触发场景：
+
+- 用户在插件市场更新插件后，立即迁移当前项目中该插件的旧版本 Unit。
+- 打开项目时，preset 的 `pluginDependencies` 快照显示本机已安装插件版本高于项目内 Unit 版本。
+
+建议签名：
+
+```ts
+import type {
+  PluginUnitMigrationHookResult,
+  PluginUnitMigrationRequest,
+} from '@flexsdk/types'
+
+export default class DemoPlugin extends FlexPluginBase {
+  async migrateUnit(
+    request: PluginUnitMigrationRequest,
+  ): Promise<PluginUnitMigrationHookResult> {
+    if (request.unitId !== '@acme/demo-plugin/action-button') return undefined
+
+    const data = request.originalUnit.data as { schemaVersion?: number; label?: string }
+    if ((data.schemaVersion ?? 1) >= 2) return undefined
+
+    return {
+      data: {
+        ...data,
+        schemaVersion: 2,
+        label: data.label ?? 'Action',
+      },
+    }
+  }
+}
+```
+
+`PluginUnitMigrationRequest` 包含：
+
+| 字段 | 说明 |
+| --- | --- |
+| `itemId` | 宿主生成的迁移项 ID，用于批量结果关联。 |
+| `originalUnit` | 旧 Unit 的完整快照。不要直接修改这个对象。 |
+| `fromVersion` | Unit 中记录的旧 `plugin.pluginVersion`。 |
+| `toVersion` | 当前已安装插件版本，也就是迁移目标版本。 |
+| `pluginUUID` | 当前插件 UUID。 |
+| `unitId` | 插件内 Unit ID。 |
+| `typeId` | FlexStudio 全局 Unit 类型 ID。 |
+
+返回值可以是：
+
+| 返回值 | 含义 |
+| --- | --- |
+| `undefined` / `null` | 不修改数据；宿主只更新 `plugin.pluginVersion`。 |
+| `{ data }` | 只替换 `unit.data`；宿主保留 uuid、typeId、geometry、config、appearance 和插件身份，并更新 `plugin.pluginVersion`。 |
+| `{ unit }` | 返回完整 Unit。宿主会校验它不能改变 `uuid`、`typeId`、`plugin.pluginUUID`、`plugin.unitId` 和 `geometry`，并覆盖 `plugin.pluginVersion` 为目标版本。 |
+
+迁移 Hook 按 Unit 调用。单个 Unit 抛错或返回非法结构时，只会让该 Unit 迁移失败，其他 Unit 继续处理；宿主会向用户显示失败摘要，失败的 Unit 保持原数据。迁移逻辑应保持幂等，建议在 `unit.data` 中维护插件自己的 `schemaVersion`，并按 `fromVersion`、`toVersion` 和 `schemaVersion` 分支处理。
+
 ## 日志
 
 后端可以使用 `this.logger`：
@@ -113,6 +172,33 @@ await this.saveConfig(config)
 ```
 
 `loadConfig()` 和 `saveConfig()` 需要 `store` 权限。配置保存在插件自己的数据目录中，不需要开发者直接处理文件路径。
+
+## Chart 数据源 Helper
+
+`FlexPluginBase` 提供 Chart 数据源 helper，减少直接拼接 `hostApi.chart` 调用。插件需要在 manifest 中声明 `chart` 权限。
+
+实时数据只保存在 host runtime cache 中；不要写入 `defaultData` 或项目文件。`publishChartEntries()` 每次发布的是整个 data source 快照，插件可以用 `groupPath` 继续细分 entries。
+
+```ts
+await this.registerChartDataSource({
+  sourceId: 'metrics',
+  name: 'Metrics',
+  icon: 'mdi-chart-line',
+})
+
+await this.publishChartEntries('metrics', [
+  {
+    key: 'requests-per-second',
+    name: 'Requests/s',
+    type: 'Throughput',
+    rawValue: 128,
+    groupPath: ['HTTP'],
+    unit: 'req/s',
+  },
+])
+
+await this.unregisterChartDataSource('metrics')
+```
 
 ## Renderer RPC
 

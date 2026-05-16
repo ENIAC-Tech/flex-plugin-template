@@ -207,6 +207,26 @@ X-Hub-Signature-256: sha256=<hmac>
 - 被其他插件依赖的插件不能直接删除，只能归档。
 - 归档插件不会出现在搜索中，但仍可作为依赖被安装。
 
+## 更新与 Unit 迁移
+
+插件版本来自 GitHub Release tag。通过市场安装或更新插件时，FlexStudio 会把安装来源的 `marketplaceListingId` 和当前版本写入本地插件状态；项目和 preset 中的插件 Unit 则保存创建或迁移时的 `unit.plugin.pluginVersion`。
+
+用户侧更新入口包括：
+
+- 启动时自动静默检查已安装的市场插件更新，并在发现可更新版本时提示。
+- 插件安装管理页的 “Check all updates” 按钮，手动检查全部市场来源插件。
+- 插件设置页的 “Check update” 按钮，手动检查单个市场来源插件。
+- 打开项目时，根据 preset 的 `pluginDependencies` 汇总缺失和版本不足的插件，并提示进入对应 Marketplace 插件页。
+
+更新完成后，FlexStudio 会对当前项目中的旧版本插件 Unit 调用新版本插件后端的 `migrateUnit()` Hook。未提供 Hook 时按 no-op 处理，只更新 Unit 中的插件版本。插件作者发布会改变 Unit 数据结构的版本时，应在发布说明和 Marketplace README 中写清楚数据变化，并提供幂等迁移逻辑。
+
+发布破坏性 Unit 数据变更前，建议本地验证：
+
+1. 用旧版本插件创建项目并添加相关 Unit。
+2. 安装或更新到新版本插件。
+3. 打开旧项目，确认 `migrateUnit()` 被调用，旧 Unit 数据迁移成功。
+4. 检查插件日志和项目中的 Unit 行为。
+
 ## 归档、删除和恢复
 
 市场中的插件有删除和归档规则：
