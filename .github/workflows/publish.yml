@@ -5,9 +5,42 @@ on:
     types: [published]
 
 jobs:
+  validate-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify package version matches release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${GITHUB_REF_NAME}"
+          RELEASE_VERSION="${RELEASE_TAG#v}"
+          export RELEASE_TAG RELEASE_VERSION
+          node <<'NODE'
+          const fs = require('fs');
+          const releaseTag = process.env.RELEASE_TAG;
+          const releaseVersion = process.env.RELEASE_VERSION;
+          const semverPattern = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+          if (!semverPattern.test(releaseVersion)) {
+            console.error(`Release tag "${releaseTag}" is not a semver version tag.`);
+            process.exit(1);
+          }
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (pkg.version !== releaseVersion) {
+            console.error(
+              `Release tag "${releaseTag}" resolves to "${releaseVersion}", ` +
+                `but package.json version is "${pkg.version}".`
+            );
+            console.error('Update package.json version or publish a matching release tag.');
+            process.exit(1);
+          }
+          NODE
+
   publish:
-    uses: eniacelec/flex-plugin-actions/.github/workflows/publish.yml@v1
+    needs: validate-version
+    uses: ENIAC-Tech/flex-plugin-actions/.github/workflows/publish.yml@v1.1.0
     with:
-      flexcli-version: "latest"
+      flexcli-package: "https://github.com/ENIAC-Tech/flexcli/tarball/refs/heads/v2"
     secrets:
       webhook-secret: ${{ secrets.FLEX_MARKETPLACE_WEBHOOK_SECRET }}

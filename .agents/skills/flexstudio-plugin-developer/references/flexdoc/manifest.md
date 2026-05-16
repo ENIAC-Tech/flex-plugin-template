@@ -99,7 +99,7 @@ UUID 应长期稳定。发布后修改 UUID 会被视为一个新插件。
 
 ## 版本规则
 
-manifest 不包含 `version` 字段。插件市场版本来自 GitHub Release tag。
+manifest 不包含 `version` 字段。本地插件安装时，FlexStudio 使用插件包内 `package.json` 的 `version` 作为插件版本。通过插件市场安装时，优先使用 GitHub Release tag 版本；如果没有 Release/tag 版本，才回退到 `package.json` 的 `version`。
 
 建议使用语义化版本 tag：
 
@@ -108,6 +108,8 @@ v1.0.0
 v1.1.0
 v2.0.0
 ```
+
+发布 CI 会在构建前校验规范化后的 Release tag 版本与 `package.json` 的 `version` 是否一致。`v1.2.0` 会规范化为 `1.2.0`；二者不一致时发布失败。
 
 插件依赖中的 `minVersion` 也应使用可比较的版本号。
 

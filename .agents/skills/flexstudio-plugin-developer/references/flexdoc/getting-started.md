@@ -87,7 +87,7 @@ npm install
 }
 ```
 
-注意：插件版本不写在 manifest 中。插件市场版本来自 GitHub Release tag。
+注意：插件版本不写在 manifest 中。本地安装版本来自 `package.json` 的 `version`；通过插件市场安装时，优先使用 GitHub Release tag 版本，且发布 CI 会验证 tag 版本与 `package.json` 版本一致。
 
 ## 编写后端入口
 

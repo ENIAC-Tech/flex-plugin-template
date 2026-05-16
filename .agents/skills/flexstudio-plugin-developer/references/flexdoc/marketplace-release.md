@@ -7,7 +7,7 @@ FlexStudio 插件市场的发布模型基于 GitHub Release。插件必须开源
 核心规则：
 
 - 插件源代码托管在 GitHub。
-- 插件版本来自 GitHub Release tag，不来自 `manifest.json`。
+- 插件版本不来自 `manifest.json`。本地安装使用 `package.json` 的 `version`；市场安装优先使用 GitHub Release tag 版本。
 - `.flexplugin` 包作为 GitHub Release Asset 上传。
 - 插件市场通过 webhook 得知 Release 已发布。
 - 市场服务端只把 webhook 作为通知，会独立从 GitHub Release 拉取和校验包。
@@ -32,7 +32,7 @@ flexcli plugin-v2 pack --dist-dir dist
 - `permissions` 只包含实际需要的权限。
 - `native` 与 `platforms` 设置正确。
 - `.marketplace/README.{lang}.md` 已准备好。
-- GitHub Release tag 使用语义化版本，例如 `v1.2.0`。
+- GitHub Release tag 使用语义化版本，例如 `v1.2.0`，并且规范化后必须与 `package.json` 的 `version` 一致。
 
 ## Marketplace README
 
@@ -209,7 +209,7 @@ X-Hub-Signature-256: sha256=<hmac>
 
 ## 更新与 Unit 迁移
 
-插件版本来自 GitHub Release tag。通过市场安装或更新插件时，FlexStudio 会把安装来源的 `marketplaceListingId` 和当前版本写入本地插件状态；项目和 preset 中的插件 Unit 则保存创建或迁移时的 `unit.plugin.pluginVersion`。
+插件版本不写在 manifest 中。通过市场安装或更新插件时，FlexStudio 优先使用 GitHub Release tag 版本，并把安装来源的 `marketplaceListingId` 和当前版本写入本地插件状态；本地安装或缺少 Release/tag 版本时，FlexStudio 使用 `package.json` 的 `version`。项目和 preset 中的插件 Unit 则保存创建或迁移时的 `unit.plugin.pluginVersion`。
 
 用户侧更新入口包括：
 

@@ -40,9 +40,10 @@ Releases are automated via GitHub Actions.
 ### Releasing a new version
 
 1. Push your changes to `main`.
-2. Create a new GitHub Release with a semver tag, such as `v1.0.0`.
-3. The workflow builds, packs, and notifies the marketplace server.
-4. If permissions or platform support changed, the release may enter the review queue.
+2. Update `package.json` `version`.
+3. Create a new GitHub Release with a matching semver tag, such as `v1.0.0`.
+4. The workflow verifies that the tag matches `package.json`, then builds, packs, and notifies the marketplace server.
+5. If permissions or platform support changed, the release may enter the review queue.
 
 ### Native plugins
 
@@ -72,7 +73,7 @@ src/backend/index.ts              # Plugin backend entry point
 src/frontend/                     # UI pages, Vue 3, Vuetify 3
 locales/en.json                   # i18n strings
 manifest.json                     # Plugin manifest
-package.json
+package.json                      # Plugin package metadata and local version source
 tsconfig.json
 vite.config.ts
 ```
