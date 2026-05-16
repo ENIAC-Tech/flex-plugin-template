@@ -8,14 +8,17 @@
 interface PluginDefinitionsPayload {
   libraries: PluginLibraryDefinition[]
   units: PluginUnitDefinitionRuntime[]
+  builtinUnits?: PluginBuiltinUnitTemplate[]
   revision?: string
 }
 ```
 
+`libraries` 和 `units` 注册插件自有 Unit；`builtinUnits` 用来把预配置的普通内置 Unit 模板放进同一个 Unit 浏览器分组。`builtinUnits` 里的条目不是新的插件 Unit 类型，也不会让宿主把该 `typeId` 标记为插件所有。
+
 插件通常在 `FlexPluginBase.getDefinitions()` 中返回 payload：
 
 ```ts
-import { FlexPluginBase } from '@flexsdk/runtime'
+import { FlexPluginBase, unitTemplate } from '@flexsdk/runtime'
 import type { PluginDefinitionsPayload } from '@flexsdk/types'
 
 export default class DemoPlugin extends FlexPluginBase {
@@ -41,6 +44,18 @@ export default class DemoPlugin extends FlexPluginBase {
           defaultData: {
             action: 'open-url',
             url: 'https://example.com',
+          },
+        }),
+      ],
+      builtinUnits: [
+        this.createBuiltinUnitTemplate(unitTemplate, {
+          uuid: '@acme/demo-plugin/media-play-template',
+          typeId: '@eniacelec/media:media-key',
+          name: 'Play/Pause Key',
+          icon: 'mdi-play-pause',
+          data: {
+            keyId: 'play-pause',
+            hidCode: 0x00CD,
           },
         }),
       ],
@@ -71,6 +86,19 @@ interface PluginLibraryDefinition {
 | `categoryId` | 可选分类 ID。 |
 
 如果 payload 中有 Unit 但没有 Library，宿主会为插件生成一个默认 Library。不过为了可读性和可控排序，建议显式声明 Library。
+
+## Built-in Unit Templates
+
+`builtinUnits` 提供的是完整的普通内置 Unit 模板。它适合插件把常用的宿主内置 Unit 预设暴露给用户，例如预配置的媒体键、快捷键、执行命令或布局容器。用户把模板拖入项目后，得到的是普通内置 Unit，不会调用插件后端，也不会写入 `Unit.plugin` 依赖元数据。
+
+规则：
+
+- `typeId` 必须指向宿主已经注册的内置 Unit 类型，例如 `@eniacelec/media:media-key`。
+- 模板必须是完整 Unit 结构，至少包含 `uuid`、`typeId`、`name`、`icon`、`config`、`geometry`、`appearance` 和 `data`。
+- 顶层和 `data.layoutData` 嵌套 Unit 都不能包含 `plugin` 字段；SDK 的 `createBuiltinUnitTemplate()` 会递归移除插件元数据。
+- `uuid` 必须稳定且在当前 payload 内唯一，不能与插件自有 Unit 生成的 `plugin-template-${typeId}` 冲突。
+- 同一个 payload 可以同时包含插件自有 `units` 和普通内置 `builtinUnits`；渲染进程仍通过同一个 active units 查询接口读取，内置模板行会标记为 `kind: 'builtin'`。
+- 已放入项目的内置模板不依赖插件运行时。插件被禁用或卸载后，已创建的普通内置 Unit 仍按宿主内置逻辑工作。
 
 ## Unit Definition
 
@@ -395,7 +423,7 @@ this.createUnitTemplate({
 
 规则：
 
-- `functions` 必填，且至少包含一个函数。
+- `functions` 必填，且至少包含两个函数。
 - 每个函数必须有稳定且唯一的 `functionId`。
 - 前端不能新增、删除或排序函数。
 - 用户可以通过宿主已有外观编辑器修改每个函数的外观。

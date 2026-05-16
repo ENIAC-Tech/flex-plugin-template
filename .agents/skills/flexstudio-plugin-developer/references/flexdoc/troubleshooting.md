@@ -89,6 +89,9 @@ flexcli plugin-v2 diagnostics
 | `custom requires hasView: true` | 为 custom Unit 设置 `hasView: true` 并提供 `unitView` 入口。 |
 | `canvas cannot have hasView: true` | Canvas Unit 不使用 iframe 运行视图。 |
 | `canvas cannot have hasAppearanceEditor: true` | Canvas Unit 不能提供外观编辑器。 |
+| `Duplicate builtin unit template uuid in payload` | 确保 `builtinUnits[].uuid` 在当前 payload 内唯一，且不与插件自有 Unit 生成的模板 UUID 冲突。 |
+| `Builtin unit template ... plugin metadata is not allowed` | `builtinUnits` 只能提供普通内置 Unit 模板，删除顶层和嵌套 `data.layoutData` 中的 `plugin` 字段。 |
+| `Unknown built-in unit typeId in builtinUnits` | `builtinUnits[].typeId` 必须指向宿主已经注册的内置 Unit 类型，不能使用插件自定义 `typeId`。 |
 
 建议使用 SDK helper：
 

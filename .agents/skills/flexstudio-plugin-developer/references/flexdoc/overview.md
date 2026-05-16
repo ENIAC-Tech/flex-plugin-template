@@ -24,7 +24,7 @@ FlexStudio 插件系统由五个部分组成：
 
 ### Unit 定义注册
 
-插件后端返回完整 `PluginDefinitionsPayload`。主进程先做 schema 和一致性校验，再把 Library 与 Unit 写入 Definition Registry。渲染进程查询 active units 后，插件 Unit 才会出现在资源面板和编辑器里。
+插件后端返回完整 `PluginDefinitionsPayload`。主进程先做 schema 和一致性校验，再把 Library、插件自有 Unit 与插件提供的普通内置 Unit 模板写入 Definition Registry。渲染进程查询 active units 后，插件 Unit 与 `builtinUnits` 模板才会出现在资源面板和编辑器里。
 
 ### 前端调用后端
 
@@ -109,6 +109,8 @@ FlexStudio 主进程的插件系统核心职责包括：
 | `value-label` | FlexStudio 预览运行时文本；设备端用 atlas 绘制 | 功能编辑器、外观编辑器 | 插件控制的数值显示，不需要 canvas 实时推图。 |
 | `label` | FlexStudio 预览运行时文本；设备端用预置 TTF 绘制 | 功能编辑器、外观编辑器 | 插件控制的 Unicode 文本显示。 |
 
+`builtinUnits` 不属于插件 Unit 运行类型；它只把预配置的普通内置 Unit 模板加入 Unit 浏览器。
+
 ## 权限模型
 
 插件只能调用 manifest 中声明过的权限。Host API 每个能力都会检查对应权限，例如文件系统 API 需要 `file`，HTTP API 需要 `http`，插件本地存储需要 `store`，Electron 剪贴板能力需要 `electron.clipboard`。
@@ -139,6 +141,8 @@ FlexStudio 主进程的插件系统核心职责包括：
 - `label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用预置 `puhuiti` 或 `consola` TTF 绘制。
 - 插件可通过后端 Unit API 监听设备事件，并主动更新设备显示状态。
 - 宿主只负责转发、校验、格式化和生成设备渲染元数据，不会替插件执行业务状态切换。
+
+`builtinUnits` 与上面的七种插件 Unit 运行形态不同。它只贡献普通内置 Unit 模板，模板必须指向宿主已有 `typeId`，不能携带 `plugin` 元数据，用户放入项目后按宿主内置 Unit 运行，不会调用插件后端。
 
 典型数据流是：设备上报交互事件 -> 宿主按 Unit owner 转发给插件 -> 插件执行业务逻辑 -> 插件通过 Host API 更新设备状态或通过通知 API 报错。
 <!-- plugin-cycled-slider:end -->

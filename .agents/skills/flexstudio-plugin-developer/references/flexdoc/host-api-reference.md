@@ -610,7 +610,7 @@ interface PluginSliderChangedEventPayload {
 
 ### value-label 数据更新
 
-`setValueLabelData()` 只作用于已加载、属于当前插件、且定义类型为 `value-label` 的 Unit。宿主会使用注册定义里的 `valueLabel` 配置生成最终显示文本，并发布给目标设备。
+`setValueLabelData()` 只作用于属于当前插件、定义类型为 `value-label`，且已加载到目标设备或可从该设备映射项目恢复 runtime slot 的 Unit。宿主会使用注册定义里的 `valueLabel` 配置生成最终显示文本，并发布给目标设备。
 
 ```ts
 await this.hostApi.unit.setValueLabelData(
@@ -624,12 +624,12 @@ await this.hostApi.unit.setValueLabelData(
 
 - `format` 模式只接受有限 `number`，并按注册的 `format` 生成 `displayText`。
 - `custom` 模式接受 `number | string`，不会检查运行时文本是否都存在于 atlas 中；缺失字符由设备端显示为方框。
-- 该 API 要求 `unit` 权限，并要求目标 Unit 已加载到指定设备。
+- 该 API 要求 `unit` 权限，并要求目标 Unit 已加载到指定设备，或可从该设备映射的项目中恢复宿主渲染 slot。
 - `value-label` 不产生设备端 `changed` 事件；插件需要主动调用该 API 更新显示。
 
 ### label 文本更新
 
-`setLabelText()` 只作用于已加载、属于当前插件、且定义类型为 `label` 的 Unit。文本必须是字符串，Unicode 内容会原样发送给设备，由设备端用定义里的 `fontFamily` 渲染。
+`setLabelText()` 只作用于属于当前插件、定义类型为 `label`，且已加载到目标设备或可从该设备映射项目恢复 runtime slot 的 Unit。文本必须是字符串，Unicode 内容会原样发送给设备，由设备端用定义里的 `fontFamily` 渲染。
 
 ```ts
 await this.hostApi.unit.setLabelText(
@@ -643,7 +643,7 @@ await this.hostApi.unit.setLabelText(
 
 ### runtime 主图标更新
 
-`setUnitIcon()` 只作用于已加载、属于当前插件、且定义类型为 `value-label` 或 `label` 的 Unit。宿主会把输入标准化为 MDI codepoint payload，再发布给设备端用 MDI 字体绘制 primary icon。
+`setUnitIcon()` 只作用于属于当前插件、定义类型为 `value-label` 或 `label`，且已加载到目标设备或可从该设备映射项目恢复 runtime slot 的 Unit。宿主会把输入标准化为 MDI codepoint payload，再发布给设备端用 MDI 字体绘制 primary icon。
 
 ```ts
 await this.hostApi.unit.setUnitIcon(

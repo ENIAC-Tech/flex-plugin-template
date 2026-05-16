@@ -27,6 +27,7 @@ flexcli plugin-v2 pack --dist-dir dist
 - Backend RPC methods must be registered by the backend before frontend calls `backendRpc`.
 - Host API calls require matching `manifest.permissions`.
 - Plugin Unit types are `standard`, `custom`, `canvas`, `cycled`, `slider`, `value-label`, and `label`.
+- `builtinUnits` contributes ordinary host built-in Unit templates. Entries must point to existing host `typeId` values, must not carry `plugin` metadata, and run as normal built-in Units after users add them to a project.
 - `cycled` reuses the host `cycled-key` architecture. Functions are fixed by the plugin definition; users cannot add/delete/reorder them, but can edit each function appearance through the host editor. Function `data` is edited through the bridge selected-function APIs.
 - `slider` reuses the host volume slider architecture. The plugin definition supplies `format`, `min`, `max`, and optional `step`; there is no `decimals` field.
 - `value-label` renders runtime numeric text on device using a host-generated atlas. `format` mode accepts finite numbers and ignores `customCharacters`; `custom` mode accepts number/string and allows up to 128 unique declared graphemes.

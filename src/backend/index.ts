@@ -1,4 +1,4 @@
-import { FlexPluginBase } from '@flexsdk/runtime';
+import { FlexPluginBase, unitTemplate } from '@flexsdk/runtime';
 import type { PluginDefinitionsPayload, PluginEventEnvelope, PluginLoadContext } from '@flexsdk/types';
 
 const PLUGIN_UUID = '@your-username/your-plugin-name';
@@ -19,6 +19,18 @@ export default class YourPlugin extends FlexPluginBase {
           hasAppearanceEditor: true,
           hasView: false,
           defaultData: { message: 'Hello from plugin!' }
+        })
+      ],
+      builtinUnits: [
+        this.createBuiltinUnitTemplate(unitTemplate, {
+          uuid: `${PLUGIN_UUID}.builtin-media-key`,
+          typeId: '@eniacelec/media:media-key',
+          name: 'Example Media Key',
+          icon: 'mdi-play-pause',
+          data: {
+            keyId: 'play-pause',
+            hidCode: 0x00CD
+          }
         })
       ],
       revision: '1'
