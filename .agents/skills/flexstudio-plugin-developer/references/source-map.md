@@ -40,6 +40,9 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `src/main/plugin/definition-registry.ts`: active definitions.
 - `src/main/plugin/plugin-value-label-atlas.ts`: `value-label` atlas generation and extended-data reconciliation.
 - `src/main/plugin/plugin-runtime-label-device-data.ts`: device export metadata for `value-label` and `label`.
+- `src/common/button-group-state.ts`: host-side Button Group normalization, click application, appearance sync, and runtime state helpers.
+- `src/functions/button-group/`: built-in Button Group unit definition, editor, view, and device export processing.
+- `src/types/plugins/plugin-definitions.ts`: plugin Unit definition shapes, including `PluginButtonGroupDefinition`.
 - `src/common/plugin-value-label.ts`: host-side `value-label` format/custom charset and display helpers.
 - `src/common/mdi-icon-normalize.ts`: MDI name/codepoint normalization for runtime primary icons.
 - `src/main/plugin/asset-protocol.ts`: `plugin-asset://` loading.

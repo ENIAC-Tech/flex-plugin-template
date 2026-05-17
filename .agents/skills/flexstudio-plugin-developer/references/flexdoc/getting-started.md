@@ -45,7 +45,7 @@ v2 插件模板会随项目生成一个本地 agent skill：
 请使用 @.agents/skills/flexstudio-plugin-developer/SKILL.md 帮我实现这个 FlexStudio 插件功能。
 ```
 
-这个 skill 会先读取任务路由文件，再按需加载内置的插件开发文档快照，覆盖 Manifest、Unit 定义、后端运行时、前端 iframe Bridge、Host API、依赖插件 API、FlexCLI 命令和市场发布流程。这样可以让 agent 快速定位插件系统的准确约束，避免凭记忆猜测 API 或文件结构。
+这个 skill 会先读取任务路由文件，再按需加载内置的插件开发文档快照，覆盖 Manifest、Unit 定义（含 `cycled`、`slider`、`value-label`、`label`、`button-group` 运行形态）、后端运行时、前端 iframe Bridge、Host API、依赖插件 API、FlexCLI 命令和市场发布流程。这样可以让 agent 快速定位插件系统的准确约束，避免凭记忆猜测 API 或文件结构。
 
 模板中的文档快照来自 FlexStudioDocumentation 的插件开发章节。文档更新后，模板仓库会通过 CI 同步快照并提交 PR。
 

@@ -309,11 +309,11 @@ SDK 会自动设置透明背景、隐藏滚动条并上报内容高度。编辑�
 开发者仍应避免在插件页面中使用固定全屏布局，除非该页面是 `unit-view`。
 
 <!-- plugin-cycled-slider:start -->
-## Plugin cycled Function Bridge
+## Plugin cycled / button-group Function Bridge
 
-当 `cycled` Unit 提供 `unitFunctionEditor` 时，同一个 iframe 组件用于编辑所有函数，但宿主会把当前选中的函数上下文通过 bridge 暴露给前端。不要使用自定义 props 契约。
+当 `cycled` 或 `button-group` Unit 提供 `unitFunctionEditor` 时，同一个 iframe 组件用于编辑所有函数或按钮，但宿主会把当前选中的函数/按钮上下文通过 bridge 暴露给前端。不要使用自定义 props 契约。
 
-`useFlexBridge()` 新增：
+`useFlexBridge()` 提供：
 
 ```ts
 const {
@@ -329,12 +329,14 @@ const {
 interface PluginSelectedFunctionContext {
   functionId: string
   functionIndex: number
+  buttonId?: string
+  buttonIndex?: number
   name?: string
-  data: Record<string, any>
+  data: unknown
 }
 ```
 
-`unitData` 在 plugin `cycled` function editor 中会指向当前选中函数的 `data`。保存时应调用：
+`unitData` 在 plugin `cycled` function editor 中会指向当前选中函数的 `data`；在 plugin `button-group` function editor 中会指向当前选中按钮的 `pluginData`。保存时应调用：
 
 ```ts
 await setSelectedFunctionData(
@@ -353,5 +355,5 @@ await bridge.getSelectedFunctionContext()
 await bridge.setSelectedFunctionData(functionId, data)
 ```
 
-`name` 和 `appearance` 仍由宿主已有编辑器管理。插件函数编辑器只负责该函数的业务 `data`。
+`cycled` 的 `name` 和 `appearance` 仍由宿主已有编辑器管理。`button-group` 的按钮名称、显示模式、颜色、激活态和外观同步也由宿主编辑器管理；插件函数编辑器只负责当前函数或按钮的业务数据。
 <!-- plugin-cycled-slider:end -->

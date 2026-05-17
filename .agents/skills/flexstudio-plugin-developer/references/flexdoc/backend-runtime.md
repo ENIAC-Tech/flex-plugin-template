@@ -374,13 +374,14 @@ await this.hostApi.ui.showSnackbarMessage({
 | `isCanvasPushTerminalError` | 判断 Canvas 推帧错误是否应停止渲染循环。 |
 
 <!-- plugin-cycled-slider:start -->
-## Plugin cycled / slider Runtime Helpers
+## Plugin cycled / slider / button-group Runtime Helpers
 
-`FlexPluginBase` 提供 Unit runtime helper，减少直接拼 Host API 调用：
+`FlexPluginBase` 提供 Unit runtime helper，减少直接拼 Host API 调用；Button Group 状态读取/写入直接使用 `this.hostApi.unit` 中的 API。
 
 ```ts
 await this.onUnitEvent('acme.media.playback', 'pressed', async (event) => {
   const payload = event.payload as any
+  await this.setUnitRuntimeStatus(payload.serialNumber, payload.uuid, 'disabled')
   await this.setUnitFunction(payload.serialNumber, payload.uuid, 'pause')
 })
 
@@ -388,9 +389,24 @@ await this.onSliderUnitChanged('acme.media.volume', async (payload) => {
   await mediaPlayer.setVolume(payload.value)
   await this.setUnitSliderValue(payload.serialNumber, payload.uuid, payload.value)
 })
+
+await this.onUnitEvent('acme.media.source', 'changed', async (event) => {
+  const payload = event.payload as {
+    serialNumber: string
+    uuid: string
+    activeButtonIds: string[]
+    changedButtonId?: string
+  }
+  await mediaRouter.selectInputs(payload.activeButtonIds)
+})
+
+await this.hostApi.unit.setButtonGroupState(serialNumber, unitUuid, ['hdmi'])
+const activeButtonIds = await this.hostApi.unit.getButtonGroupState(serialNumber, unitUuid)
 ```
 
 `onSliderUnitChanged()` 接收宿主规范化后的 slider payload，包含 `value`、`phase`、`min`、`max`、`step`、`format`、`displayText`、`data` 和 `serialNumber`。
 
-`cycled` 的建议流程是：监听 `pressed` 或 `touch` -> 执行业务动作 -> 成功后调用 `setUnitFunction(serialNumber, unitUuid, functionId)`。宿主和设备不会自动切换 plugin `cycled` 状态。
+`setUnitRuntimeStatus(serialNumber, unitUuid, status)` 可设置 `enabled`、`disabled`、`warning` 三种设备端运行时状态。`disabled` 会在设备端阻断交互，`warning` 只显示告警角标。`cycled` 的建议流程是：监听 `pressed` 或 `touch` -> 执行业务动作 -> 成功后调用 `setUnitFunction(serialNumber, unitUuid, functionId)`。宿主和设备不会自动切换 plugin `cycled` 状态。
+
+`button-group` 的建议流程是：监听 `changed` -> 根据 `activeButtonIds` 执行业务动作；需要由插件主动恢复或切换状态时，调用 `hostApi.unit.setButtonGroupState(serialNumber, unitUuid, activeButtonIds)`。SDK 会通过 Host API 校验按钮 ID、单选/多选和 mandatory 约束。
 <!-- plugin-cycled-slider:end -->

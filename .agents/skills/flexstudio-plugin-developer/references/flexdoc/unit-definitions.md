@@ -118,6 +118,7 @@ interface PluginUnitDefinitionRuntime {
   slider?: PluginUnitDefinitionSliderConfig
   valueLabel?: PluginUnitDefinitionValueLabelConfig
   label?: PluginUnitDefinitionLabelConfig
+  buttonGroup?: PluginButtonGroupDefinition
   defaultData?: Record<string, any>
   platforms?: ('win32' | 'darwin' | 'linux')[]
   libraryUUID?: string
@@ -140,6 +141,7 @@ interface PluginUnitDefinitionRuntime {
 | `slider` | `slider` Unit 的数值范围、步进和显示格式。 |
 | `valueLabel` | `value-label` Unit 的 format/custom 模式配置。 |
 | `label` | `label` Unit 的设备端 TTF 字体配置。 |
+| `buttonGroup` | `button-group` Unit 的按钮列表、选择模式、默认激活项和统一外观配置。 |
 | `defaultData` | 创建 Unit 实例时的默认数据。 |
 | `platforms` | Unit 支持的平台，使用 `win32`、`darwin`、`linux`。 |
 | `libraryUUID` | Unit 所属 Library。省略时使用 payload 中第一个 Library。 |
@@ -148,7 +150,7 @@ interface PluginUnitDefinitionRuntime {
 
 ```ts
 interface PluginUnit {
-  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider' | 'value-label' | 'label'
+  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider' | 'value-label' | 'label' | 'button-group'
   pluginUUID: string
   pluginVersion: string
   unitId: string
@@ -157,7 +159,7 @@ interface PluginUnit {
 
 | 字段 | 说明 |
 | --- | --- |
-| `type` | Unit 类型：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label` 或 `label`。 |
+| `type` | Unit 类型：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label`、`label` 或 `button-group`。 |
 | `pluginUUID` | 注册该 Unit 的插件 UUID，必须与当前插件一致。 |
 | `pluginVersion` | 当前插件版本。通常由 `FlexPluginBase` 从加载上下文填充。 |
 | `unitId` | 插件内 Unit ID，必须与外层 `unitId` 一致。 |
@@ -286,9 +288,10 @@ FlexStudio 注册定义时会执行结构校验和一致性校验：
 - `custom` Unit 必须设置 `hasView: true`。
 - `canvas` Unit 不能设置 `hasView: true`。
 - `canvas` Unit 不能设置 `hasAppearanceEditor: true`。
-- `value-label` Unit 必须设置 `valueLabel`，不能设置 `functions`、`slider`、`label` 或 `hasView: true`。
-- `label` Unit 必须设置 `label`，不能设置 `functions`、`slider`、`valueLabel` 或 `hasView: true`。
-- 其它 Unit 类型不能携带不属于自身类型的 `functions`、`slider`、`valueLabel` 或 `label` 配置。
+- `value-label` Unit 必须设置 `valueLabel`，不能设置 `functions`、`slider`、`label`、`buttonGroup` 或 `hasView: true`。
+- `label` Unit 必须设置 `label`，不能设置 `functions`、`slider`、`valueLabel`、`buttonGroup` 或 `hasView: true`。
+- `button-group` Unit 必须设置 `buttonGroup`，不能设置 `functions`、`slider`、`valueLabel`、`label`、顶层 `appearanceOverride` 或 `hasView: true`。
+- 其它 Unit 类型不能携带不属于自身类型的 `functions`、`slider`、`valueLabel`、`label` 或 `buttonGroup` 配置。
 
 可以在构建或 CI 中使用 CLI 验证定义：
 
@@ -318,7 +321,7 @@ await this.registerDefinitions(payload)
 `registerDefinitions()` 会替换该插件此前注册的所有定义，因此传入的 payload 应包含当前插件希望暴露的完整 Library 与 Unit 集合。
 
 <!-- plugin-cycled-slider:start -->
-## Plugin cycled、slider、value-label 与 label Unit
+## Plugin cycled、slider、value-label、label 与 button-group Unit
 
 `PluginUnit.type` 支持：
 
@@ -331,6 +334,7 @@ type PluginUnitType =
   | 'slider'
   | 'value-label'
   | 'label'
+  | 'button-group'
 ```
 
 `PluginUnitDefinitionRuntime` 额外支持：
@@ -342,6 +346,7 @@ interface PluginUnitDefinitionRuntime {
   slider?: PluginUnitDefinitionSliderConfig
   valueLabel?: PluginUnitDefinitionValueLabelConfig
   label?: PluginUnitDefinitionLabelConfig
+  buttonGroup?: PluginButtonGroupDefinition
 }
 
 interface PluginUnitDefinitionCycledFunction {
@@ -365,6 +370,24 @@ type PluginUnitDefinitionValueLabelConfig =
 interface PluginUnitDefinitionLabelConfig {
   fontFamily: 'puhuiti' | 'consola'
 }
+
+interface PluginButtonGroupDefinition {
+  buttons: PluginButtonGroupButtonDefinition[]
+  selectionMode?: 'single' | 'multiple'
+  mandatory?: boolean
+  displayMode?: 'text' | 'icon' | 'icon-text'
+  defaultActiveButtonIds?: string[]
+  inactiveBackgroundColor?: string
+  foregroundColor?: string
+  activeColor?: string
+}
+
+interface PluginButtonGroupButtonDefinition {
+  buttonId: string
+  name?: string
+  data?: Record<string, any>
+  appearanceOverride?: PluginAppearanceOverride
+}
 ```
 
 ### appearanceOverride
@@ -377,7 +400,7 @@ interface PluginUnitDefinitionLabelConfig {
 - override element 不带 `identifier` 时，表示追加一个完整新 element。
 - 带未知 `identifier` 的覆盖会被定义校验拒绝。
 
-该机制适用于 `standard`、`slider`、`value-label`、`label`，以及 `cycled.functions[].appearanceOverride`。`value-label` 和 `label` 的 primary text / primary icon 是设备端运行时元素；外观覆盖可以调整它们的位置、字号、颜色等样式，但设备预渲染 PNG 不会把这两个元素画进去。
+该机制适用于 `standard`、`slider`、`value-label`、`label`，以及 `cycled.functions[].appearanceOverride` 和 `buttonGroup.buttons[].appearanceOverride`。`button-group` 不接受顶层 `appearanceOverride`，因为每个按钮需要单独绑定外观；统一布局、配色和显示模式由 Button Group 编辑器和 `buttonGroup` 配置维护。`value-label` 和 `label` 的 primary text / primary icon 是设备端运行时元素；外观覆盖可以调整它们的位置、字号、颜色等样式，但设备预渲染 PNG 不会把这两个元素画进去。
 
 ### cycled
 
@@ -430,7 +453,73 @@ this.createUnitTemplate({
 - 函数外观不是 `data` 的一部分；运行时结构与内置 `cycled-key` 保持一致。
 - 插件函数编辑器通过 bridge 读取和写入当前选中函数的 `data`。
 
-设备点击后，宿主只把事件转发给拥有该 Unit 的插件，不会自动切换函数。插件业务处理成功后调用 `hostApi.unit.setFunction(serialNumber, unitUuid, functionId)` 更新设备状态；失败时应使用通知 API 报错。
+设备点击 plugin `cycled` Unit 时，宿主不会自行切换状态。插件业务处理成功后调用 `hostApi.unit.setFunction(serialNumber, unitUuid, functionId)` 更新设备状态；失败时应使用通知 API 报错。
+
+### button-group
+
+`button-group` 是插件控制的按键组，适合输入源、模式、配置项、过滤条件等单选或多选状态切换。它复用内置 Button Group 的外观和状态结构，不需要插件提供 iframe 运行视图。
+
+```ts
+this.createUnitTemplate({
+  unitId: '@acme/media/source',
+  typeId: 'acme.media.source',
+  name: 'Input Source',
+  categoryId: 'media',
+  plugin: {
+    type: 'button-group',
+    pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion,
+    unitId: '@acme/media/source',
+  },
+  hasFunctionEditor: true,
+  buttonGroup: {
+    selectionMode: 'single',
+    mandatory: true,
+    displayMode: 'icon-text',
+    inactiveBackgroundColor: '#111827',
+    foregroundColor: '#e5e7eb',
+    activeColor: '#22c55e',
+    defaultActiveButtonIds: ['hdmi'],
+    buttons: [
+      {
+        buttonId: 'hdmi',
+        name: 'HDMI',
+        data: { source: 'hdmi' },
+        appearanceOverride: {
+          elements: [
+            { identifier: 'title', text: 'HDMI' },
+          ],
+        },
+      },
+      {
+        buttonId: 'usb',
+        name: 'USB',
+        data: { source: 'usb' },
+        appearanceOverride: {
+          elements: [
+            { identifier: 'title', text: 'USB' },
+          ],
+        },
+      },
+    ],
+  },
+})
+```
+
+规则：
+
+- `buttonGroup.buttons` 必填，且至少包含两个按钮。
+- 每个按钮必须有稳定、非空且唯一的 `buttonId`。
+- `selectionMode` 默认为 `single`；`multiple` 允许同时激活多个按钮。
+- `mandatory` 默认为 `true`。启用 mandatory 时至少要有一个激活按钮；未声明 `defaultActiveButtonIds` 时默认激活第一个按钮。
+- `defaultActiveButtonIds` 只接受已声明的 `buttonId`；`single` 模式最多一个激活项。
+- `displayMode` 默认为 `icon-text`，可统一设置为 `text`、`icon` 或 `icon-text`。
+- `inactiveBackgroundColor`、`foregroundColor` 和 `activeColor` 分别控制未激活背景、前景和激活颜色。
+- 不允许设置顶层 `appearanceOverride`；按钮外观使用 `buttonGroup.buttons[].appearanceOverride`。用户在宿主编辑器里调整其中一个按钮的布局或配色时，宿主会按内置 Button Group 规则同步其它按钮，保持组内一致。
+- 按钮业务数据使用 `buttonGroup.buttons[].data`。插件函数编辑器通过 bridge 读写当前按钮的 `pluginData`，不要把 `appearance` 放入 `data`。
+- 不能设置 `hasView: true`。运行视图由宿主提供，插件通过 Host API 读取/设置激活状态并监听 `changed` 事件。
+
+插件可调用 `hostApi.unit.getButtonGroupState(serialNumber, unitUuid)` 读取当前激活按钮 ID 列表，调用 `hostApi.unit.setButtonGroupState(serialNumber, unitUuid, activeButtonIds)` 主动更新状态。设备端交互产生的状态变化会通过 `unit.on(typeId, 'changed')` 发送给拥有该 Unit 的插件。
 
 ### slider
 
@@ -518,7 +607,7 @@ this.createUnitTemplate({
 规则：
 
 - `valueLabel` 配置必填。
-- 不能同时声明 `functions`、`slider` 或 `label`。
+- 不能同时声明 `functions`、`slider`、`label` 或 `buttonGroup`。
 - 不能设置 `hasView: true`。
 - primary text 和 primary icon 由设备端运行时绘制；预渲染 PNG 只包含背景、边框、图片和非 primary 元素。
 - `value-label` 不新增设备端 `changed` 事件。插件通过 `hostApi.unit.setValueLabelData()` 和 `hostApi.unit.setUnitIcon()` 主动更新设备显示。
@@ -548,7 +637,7 @@ this.createUnitTemplate({
 
 - `label` 配置必填。
 - `fontFamily` 只能是 `puhuiti` 或 `consola`。
-- 不能同时声明 `functions`、`slider` 或 `valueLabel`。
+- 不能同时声明 `functions`、`slider`、`valueLabel` 或 `buttonGroup`。
 - 不能设置 `hasView: true`。
 - primary text 的字体族被锁定为定义里的字体；字号、颜色、粗体、斜体等外观仍可编辑。
 - primary text 和 primary icon 由设备端运行时绘制；预渲染 PNG 不包含这两个元素。

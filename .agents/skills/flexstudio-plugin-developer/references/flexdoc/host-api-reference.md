@@ -217,11 +217,15 @@ Topic 约定：
 
 ```ts
 type UnitDeviceEventType = 'load' | 'unload' | 'touch' | 'pressed' | 'released' | 'changed'
+type DeviceUnitRuntimeStatus = 'enabled' | 'disabled' | 'warning'
 
 interface PluginUnitApi {
   on(typeId: string, event: UnitDeviceEventType, options?: RegisterEventOptions): Promise<void>
   off(typeId: string, event: UnitDeviceEventType, handler: PluginEventHandler): Promise<void>
+  setRuntimeStatus(serialNumber: string, unitUuid: string, status: DeviceUnitRuntimeStatus): Promise<void>
   setFunction(serialNumber: string, unitUuid: string, functionId: string): Promise<void>
+  getButtonGroupState(serialNumber: string, unitUuid: string): Promise<string[]>
+  setButtonGroupState(serialNumber: string, unitUuid: string, activeButtonIds: string[]): Promise<void>
   setSliderValue(serialNumber: string, unitUuid: string, value: number): Promise<void>
   setValueLabelData(serialNumber: string, unitUuid: string, value: number | string): Promise<void>
   setLabelText(serialNumber: string, unitUuid: string, text: string): Promise<void>
@@ -553,7 +557,25 @@ interface PluginElectronScreenApi {
 <!-- plugin-cycled-slider:start -->
 ## Plugin Unit Runtime API
 
-`hostApi.unit` 需要 `unit` 权限。权威接口见上方 Unit API；本节补充 plugin `cycled`、`slider`、`value-label` 和 `label` 的运行时语义。
+`hostApi.unit` 需要 `unit` 权限。权威接口见上方 Unit API；本节补充通用 runtime status，以及 plugin `cycled`、`button-group`、`slider`、`value-label` 和 `label` 的运行时语义。
+
+### 通用 Unit runtime status
+
+`setRuntimeStatus()` 可为当前插件拥有、且已加载到目标设备的 plugin Unit 设置运行时状态。状态只保存在设备内存中；切换 page 不丢失，project sync / reload 或设备重启会清空。
+
+- `enabled`：默认状态，清除额外视觉状态并恢复交互。
+- `disabled`：设备端显示黑色 mask 和 `mdi-cancel`，并阻断该 Unit 的设备端交互。
+- `warning`：设备端左上角显示黄色 `mdi-alert-circle` 角标，不阻断交互。
+
+```ts
+await this.hostApi.unit.setRuntimeStatus(
+  event.payload.serialNumber,
+  event.payload.uuid,
+  'disabled',
+)
+```
+
+插件只能设置自己的已加载 plugin Unit；不能设置内置 Unit、其它插件的 Unit，或当前未加载的 Unit。FlexStudio 主程序内部 API 可设置当前映射项目中的任意 Unit。
 
 ### cycled 状态更新
 
@@ -575,6 +597,57 @@ await this.hostApi.device.showSnackbarMessage(event.payload.serialNumber, {
   type: 'error',
 })
 ```
+
+### button-group 状态更新
+
+`getButtonGroupState()` 返回当前激活按钮 ID 列表。`setButtonGroupState()` 会按注册定义校验 `selectionMode`、`mandatory` 和按钮 ID，再把规范化后的状态发布到目标设备并写入 runtime slot。
+
+```ts
+const activeButtonIds = await this.hostApi.unit.getButtonGroupState(
+  event.payload.serialNumber,
+  event.payload.uuid,
+)
+
+await this.hostApi.unit.setButtonGroupState(
+  event.payload.serialNumber,
+  event.payload.uuid,
+  ['hdmi'],
+)
+```
+
+Button Group `changed` 事件 payload 包含：
+
+```ts
+interface PluginButtonGroupChangedEventPayload {
+  serialNumber: string
+  uuid: string
+  typeId: string
+  pluginUUID: string
+  selectionMode: 'single' | 'multiple'
+  mandatory: boolean
+  activeButtonIds: string[]
+  previousActiveButtonIds: string[]
+  changedButtonId?: string
+  changedButtonIndex?: number
+  buttons: Array<{
+    buttonId: string
+    index: number
+    name?: string
+    data?: Record<string, any>
+  }>
+  source: 'device' | 'api' | 'load'
+}
+```
+
+宿主会根据注册定义重新校验和规范化设备上报的 Button Group 状态，再转发给拥有该 Unit 的插件。`buttons[].data` 来自插件定义或用户在函数编辑器中保存的业务数据，不包含按钮外观。
+
+规则：
+
+- 该 API 只作用于属于当前插件、定义类型为 `button-group`，且已加载到目标设备或可从该设备映射项目恢复 runtime slot 的 Unit。
+- `single` 模式最多一个激活按钮；`multiple` 模式允许多个激活按钮。
+- `mandatory: true` 时，空激活列表会被拒绝或恢复为定义允许的默认激活按钮。
+- 未知按钮 ID、重复 ID、空字符串或不满足选择模式的输入会被拒绝。
+- 监听状态变化使用 `hostApi.unit.on(typeId, 'changed')` 或 `FlexPluginBase.onUnitEvent(typeId, 'changed', handler)`。
 
 ### slider 值更新
 
