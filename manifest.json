@@ -11,7 +11,7 @@
   "minHostVersion": "1.0.0",
   "native": false,
   "platforms": ["win32-x64", "darwin-arm64", "darwin-x64", "linux-x64"],
-  "devices": ["flow2pro", "flexbar", "flex2"],
+  "devices": ["Flow2Pro", "FlexbarV2", "FlexBoardV1", "MassX"],
   "requiredCapabilities": [],
   "permissions": ["store", "logger", "device", "definitions", "bus", "unit", "ui"],
   "dependencies": [],
