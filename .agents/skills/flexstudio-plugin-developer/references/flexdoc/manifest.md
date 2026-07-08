@@ -73,7 +73,7 @@
 | `author` | `PluginAuthor` | 否 | 插件作者信息。 |
 | `minHostVersion` | `string` | 否 | 最低 FlexStudio 版本要求。 |
 | `native` | `boolean` | 否 | 是否包含平台相关 native 能力。native 插件必须按平台构建和打包。 |
-| `platforms` | `PluginPlatform[]` | 否 | 支持的平台。也兼容旧的 `win32`、`darwin`、`linux` 写法。 |
+| `platforms` | `PluginPlatform[]` | 否 | 支持的平台。当前文档与校验器都使用 `win32-x64`、`darwin-arm64`、`darwin-x64`、`linux-x64`。 |
 | `requiresNetwork` | `boolean` | 否 | 是否会访问互联网或局域网。需要联网的插件应设置为 `true`，市场的网络徽标只基于这个字段。 |
 | `runtime` | `PluginRuntimeManifest` | 否 | 后端运行时元数据，例如启动超时和预期内存占用。 |
 | `devices` | `string[]` | 否 | 支持的设备型号。 |

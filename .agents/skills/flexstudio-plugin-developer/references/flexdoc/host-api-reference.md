@@ -168,7 +168,7 @@ interface PluginOAuthApi {
 - 在成功、provider 错误、state 不匹配、超时、启动失败、打开浏览器失败或异常回调路径时关闭监听器。
 
 插件职责：
-- 自己构造 provider 授权 URL，并确保 provider 已允许 loopback redirect URI。
+- 自己构造 provider 授权 URL，并确保 `authorizationUrl` 使用 `http:` 或 `https:`，且 provider 已允许 loopback redirect URI。
 - 收到 `code` 或 `error` 后自行完成 token exchange、错误处理和会话建立。
 - 将 access token / refresh token 等敏感凭据保存到 `hostApi.secrets`。
 

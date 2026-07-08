@@ -1,6 +1,6 @@
 # Bundled FlexStudio Plugin Docs Index
 
-Source commit: `22d9ea949190faae76891d9612cb8eedf29e2aad-dirty`
+Source commit: `42570ee9e323731afee70eea84b0433d5cde7be9-dirty`
 Source path: `docs/zh/sdk/plugin-development`
 
 Load only the docs needed for the current task.
