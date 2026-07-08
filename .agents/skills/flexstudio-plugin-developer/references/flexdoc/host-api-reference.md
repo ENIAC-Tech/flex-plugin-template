@@ -16,9 +16,13 @@ await this.hostApi.ui.showSnackbarMessage({ message: 'Done', type: 'success' })
 | `hostApi.file` | `file` | 文件系统读写。 |
 | `hostApi.system` | `system` | 系统和应用信息。 |
 | `hostApi.store` | `store` | 插件作用域 key-value 存储。 |
-| `hostApi.http` | `http` | HTTP 请求。 |
-| `hostApi.logger` | `logger` | 低层日志写入。通常优先使用 `this.logger`。 |
-| `hostApi.plugin` | `definitions` / `store` / `pluginApi` | 插件定义注册、配置读写和直接依赖 API 调用。 |
+| `hostApi.http` | `http` | 通用 HTTP/HTTPS 请求。 |
+| `hostApi.ws` | `websocket` | WebSocket 连接与消息收发。 |
+| `hostApi.secrets` | `secrets` | 面向敏感凭据的插件级存储。通常会加密；必要时会回退到宿主可见的明文存储并提示。 |
+| `hostApi.oauth` | `oauth` | 宿主管理 loopback 回调与 `state` 校验的 OAuth 授权辅助。 |
+| `hostApi.jobs` | `jobs` | 宿主拥有的后台任务记录与协作式取消状态。 |
+| `hostApi.logger` | `logger` | 将日志写入宿主日志系统；通常优先使用 `this.logger`。 |
+| `hostApi.plugin` | `definitions` / `store` / `pluginApi` | 插件定义注册、配置持久化与插件依赖调用 API。 |
 | `hostApi.bus` | `bus` | 宿主事件总线。 |
 | `hostApi.unit` | `unit` | Unit 设备事件。 |
 | `hostApi.canvas` | `unit` | Canvas Unit 推帧。 |
@@ -97,21 +101,223 @@ await this.hostApi.store.set('count', count + 1)
 
 如果要保存插件配置，优先使用 `this.loadConfig()` 和 `this.saveConfig()`。
 
+## Secrets API
+
+权限：`secrets`
+
+```ts
+interface PluginSecretsApi {
+  get(key: string): Promise<string | null>
+  set(key: string, value: string): Promise<void>
+  delete(key: string): Promise<void>
+  list(): Promise<Array<{ key: string; updatedAt: string; encrypted: boolean }>>
+}
+```
+
+`hostApi.secrets` 适合保存 access token、refresh token、API key 等敏感凭据。数据按插件 UUID 隔离，其他插件无法直接读取。宿主负责加密存储与生命周期隔离，但不会替插件刷新令牌、校验令牌是否过期，也不会自动同步到插件配置。
+
+写入时的加密策略：
+
+- 在主流桌面环境里，FlexStudio 通常可通过 Electron `safeStorage` 使用系统提供的安全存储能力。
+- 如果当前环境不支持加密，或写入时加密失败，FlexStudio 会把该插件作用域下的 secret 以明文形式写入自己的 secret store，并向用户显示一条简短 warning。
+- `list()` 里的 `encrypted` 字段会反映当前记录是否真的加密保存。
+
+读取时的安全策略：
+
+- 对于真实的加密记录，如果解密失败，FlexStudio 会返回“没有这个值”，而不是把密文暴露给插件。
+- 这通常意味着本机安全存储状态发生变化，插件应提示用户重新登录或重新保存 secret。
+
+建议：
+
+```ts
+await this.hostApi.secrets.set('refresh-token', refreshToken)
+const accessToken = await this.hostApi.secrets.get('access-token')
+```
+
+`list()` 只返回键名、更新时间和是否加密等元数据，不返回明文值。OAuth token、refresh token 和各类 API key 应优先保存在这里，而不是写入 `saveConfig()` 或 `hostApi.store` 的普通 JSON 配置。
+
+## OAuth API
+
+权限：`oauth`
+
+```ts
+interface OAuthAuthorizationRequest {
+  authorizationUrl: string
+  state: string
+  callbackPath?: string
+  timeoutMs?: number
+}
+
+interface OAuthAuthorizationResult {
+  callbackUrl: string
+  query: Record<string, string>
+  code?: string
+  state: string
+}
+
+interface PluginOAuthApi {
+  startAuthorizationFlow(request: OAuthAuthorizationRequest): Promise<OAuthAuthorizationResult>
+}
+```
+
+`hostApi.oauth.startAuthorizationFlow()` 会在本机 `127.0.0.1` 上启动一次性的 loopback listener，打开插件提供的授权页面，并在收到回调后把查询参数返回给插件。FlexStudio 会写入 loopback `redirect_uri`，校验回调中的 `state`，然后关闭监听器。宿主只负责授权阶段，不负责 token exchange、token 刷新和 token 持久化。
+
+宿主职责：
+- 将插件提供的 `state` 和 loopback `redirect_uri` 写入 provider 授权 URL。
+- 在回调到达时校验 `state`，并把 `code`、`error` 及其他 query 参数原样返回给插件。
+- 在成功、provider 错误、state 不匹配、超时、启动失败、打开浏览器失败或异常回调路径时关闭监听器。
+
+插件职责：
+- 自己构造 provider 授权 URL，并确保 provider 已允许 loopback redirect URI。
+- 收到 `code` 或 `error` 后自行完成 token exchange、错误处理和会话建立。
+- 将 access token / refresh token 等敏感凭据保存到 `hostApi.secrets`。
+
+Provider 配置注意事项：
+- 只支持 loopback 回调，不支持自定义 URI scheme。
+- `callbackPath` 应只用于区分本次回调路径，不应用来承载 token、code 或其他敏感数据。
+- 如果 provider 不允许桌面客户端使用 loopback redirect URI，需要插件自行处理该 provider 的限制，而不是要求 FlexStudio 注册自定义协议。
+
+示例：
+
+```ts
+const result = await this.hostApi.oauth.startAuthorizationFlow({
+  authorizationUrl,
+  state,
+  timeoutMs: 120000,
+})
+
+if (result.query.error) {
+  throw new Error(result.query.error)
+}
+
+await this.hostApi.secrets.set('oauth-refresh-token', refreshToken)
+```
+
+## Jobs API
+
+权限：`jobs`
+
+```ts
+type PluginJobState = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled'
+
+interface PluginJobRecord {
+  id: string
+  pluginUUID: string
+  title: string
+  state: PluginJobState
+  progress: number | null
+  message?: string
+  cancelRequested: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+interface PluginJobCreateInput {
+  title: string
+  progress?: number | null
+  message?: string
+}
+
+interface PluginJobUpdatePatch {
+  title?: string
+  progress?: number | null
+  message?: string
+}
+
+interface PluginJobsApi {
+  create(input: PluginJobCreateInput): Promise<PluginJobRecord>
+  update(jobId: string, patch: PluginJobUpdatePatch): Promise<PluginJobRecord>
+  complete(jobId: string, result?: unknown): Promise<PluginJobRecord>
+  fail(jobId: string, error: string): Promise<PluginJobRecord>
+  cancel(jobId: string): Promise<PluginJobRecord>
+  get(jobId: string): Promise<PluginJobRecord | null>
+  list(): Promise<PluginJobRecord[]>
+  isCancellationRequested(jobId: string): Promise<boolean>
+}
+```
+
+`hostApi.jobs` 适合长时同步、批量扫描、导入导出等后台任务。Job 记录由宿主持有，只保存在内存中，按插件 UUID 隔离；它们不是项目数据，也不会替代你的插件内部状态机。
+
+状态约定：
+
+- `create()` 创建 `queued` 记录。
+- 第一次 `update()` 会把 `queued` 推进到 `running`。
+- `complete()`、`fail()` 和 `cancel()` 会把 job 置为终态。
+
+取消语义是协作式的：
+
+1. 宿主或 UI 发起取消请求。
+2. Job 记录的 `cancelRequested` 变为 `true`。
+3. 插件在自己的长循环、分页同步或子任务边界轮询 `isCancellationRequested(jobId)`。
+4. 插件完成清理后，显式调用 `jobs.cancel(jobId)`，把状态收敛到 `cancelled`。
+
+也就是说，`jobs.cancel(jobId)` 不是“请求取消”，而是“插件确认自己已经清理完并结束这个 job”。
+
+示例：
+
+```ts
+const job = await this.hostApi.jobs.create({
+  title: 'Sync remote devices',
+  progress: 0,
+  message: 'Queued',
+})
+
+for (let page = 0; page < totalPages; page += 1) {
+  if (await this.hostApi.jobs.isCancellationRequested(job.id)) {
+    await cleanupPartialState()
+    await this.hostApi.jobs.cancel(job.id)
+    return
+  }
+
+  await syncOnePage(page)
+  await this.hostApi.jobs.update(job.id, {
+    progress: Math.round(((page + 1) / totalPages) * 100),
+    message: `Synced page ${page + 1}/${totalPages}`,
+  })
+}
+
+await this.hostApi.jobs.complete(job.id, { synced: true })
+```
+
 ## HTTP API
 
 权限：`http`
+
+`hostApi.http` 是通用 Host API，不绑定 HomeAssistant 或任何特定服务。插件可以继续使用兼容的 `http.get()`，也可以使用通用的 `hostApi.http.request(options)` 发起 HTTP/HTTPS 请求。
 
 ```ts
 interface PluginHttpApi {
   get(url: string, options?: any): Promise<{
     statusCode: number
-    headers: any
+    headers: Record<string, string | string[]>
     body: string
   }>
+
+  request(options: PluginHttpRequestOptions): Promise<PluginHttpResponse>
+}
+
+type PluginHttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+type PluginHttpResponseType = 'text' | 'json' | 'arrayBuffer'
+
+interface PluginHttpRequestOptions {
+  url: string
+  method?: PluginHttpMethod
+  headers?: Record<string, string>
+  body?: string | ArrayBuffer | Uint8Array | Record<string, any>
+  responseType?: PluginHttpResponseType
+  timeoutMs?: number
+}
+
+interface PluginHttpResponse<T = string | any | ArrayBuffer> {
+  statusCode: number
+  headers: Record<string, string | string[]>
+  body: T
 }
 ```
 
-示例：
+### `hostApi.http.get(url, options)`
+
+`http.get()` 是旧版便捷方法，等价于发起 `GET` 请求并返回文本 `body`。已有插件可以继续使用。
 
 ```ts
 const response = await this.hostApi.http.get('https://api.example.com/status')
@@ -120,6 +326,75 @@ if (response.statusCode === 200) {
 }
 ```
 
+### `hostApi.http.request(options)`
+
+权限：`http`
+
+`request()` 支持 `GET`、`POST`、`PUT`、`PATCH` 和 `DELETE`。`responseType` 可设为 `text`、`json` 或 `arrayBuffer`；未指定时默认按文本返回。Host 会拒绝非 `http:` / `https:` URL，并对请求应用超时和响应体大小限制，避免插件后端进程被无限等待或过大响应拖垮。
+
+```ts
+const response = await this.hostApi.http.request({
+  url: 'https://api.example.com/widgets',
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: { name: 'Demo' },
+  responseType: 'json',
+  timeoutMs: 5000,
+})
+
+if (response.statusCode === 201) {
+  this.logger.info('created widget', response.body)
+}
+```
+
+返回值固定包含 `{ statusCode, headers, body }`。当 `responseType` 为 `json` 时，`body` 是解析后的 JSON；为 `arrayBuffer` 时，`body` 是二进制响应；为 `text` 时，`body` 是字符串。
+
+## WebSocket API
+
+权限：`websocket`
+
+`hostApi.ws` 是通用 Host API，不绑定 HomeAssistant 或任何特定服务。插件可以通过 `hostApi.ws.connect(url, options)` 打开长连接 WebSocket。
+
+```ts
+interface PluginWebSocketApi {
+  connect(url: string, options?: PluginWebSocketConnectOptions): Promise<PluginWebSocketHandle>
+}
+
+interface PluginWebSocketConnectOptions {
+  headers?: Record<string, string>
+  protocols?: string | string[]
+  timeoutMs?: number
+}
+
+interface PluginWebSocketHandle {
+  send(data: string | ArrayBuffer | Uint8Array): Promise<void>
+  close(code?: number, reason?: string): Promise<void>
+  on(event: 'message', handler: (event: { data: string | ArrayBuffer }) => void): () => void
+  on(event: 'error', handler: (event: { message: string }) => void): () => void
+  on(event: 'close', handler: (event: { code: number; reason: string }) => void): () => void
+  off(event: 'message', handler: (event: { data: string | ArrayBuffer }) => void): void
+  off(event: 'error', handler: (event: { message: string }) => void): void
+  off(event: 'close', handler: (event: { code: number; reason: string }) => void): void
+}
+```
+
+示例：
+
+```ts
+const socket = await this.hostApi.ws.connect('wss://stream.example.com/events')
+
+const unsubscribe = socket.on('message', async (message) => {
+  this.logger.info('ws message', { message })
+})
+
+await socket.send(JSON.stringify({ type: 'subscribe', topic: 'metrics' }))
+
+// 不再需要监听时先取消订阅，再关闭连接。
+unsubscribe()
+await socket.close(1000, 'plugin shutdown')
+```
+
+插件应在 `onUnload()` 中主动调用 `close()` 清理自己打开的 sockets。插件 unload、disable、reload、crash 或进程 exit 时，Host 也会关闭该插件 owned sockets，避免连接泄漏。
 ## Logger API
 
 权限：`logger`

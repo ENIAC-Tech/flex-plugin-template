@@ -36,6 +36,8 @@ flexcli plugin-v2 diagnostics --host 127.0.0.1 --port 34579
 - `entry` 指向源码文件而不是构建产物。
 - `permissions` 中包含未知权限。
 - native 插件没有正确声明 `platforms`。
+- 使用了 `http` 或 `websocket` 权限，但没有设置 `requiresNetwork: true`。
+- `runtime.startupTimeoutMs` 写了极端值，触发 validate warning。
 
 运行：
 
@@ -130,6 +132,18 @@ await super.onLoad(ctx)
 
 否则 `this.hostApi`、`this.logger`、`this.pluginUUID` 和 `this.pluginVersion` 不会初始化。
 
+如果日志显示启动超时或插件长时间停留在 starting 阶段，优先检查：
+
+- `onLoad()` 里是否在等待网络登录、全量同步、目录扫描或大文件解析。
+- 是否把 definitions 注册放在慢任务之后。
+- `runtime.startupTimeoutMs` 是否只是掩盖了不必要的慢启动。
+
+推荐处理：
+
+- 保持 `onLoad()` 简短，只做注册和轻量初始化。
+- 把慢任务挪到后台 `jobs` 流程。
+- 只在确有必要时调整 `runtime.startupTimeoutMs`。
+
 ## Host API 调用失败
 
 常见原因：
@@ -140,6 +154,9 @@ await super.onLoad(ctx)
 - 文件路径不存在或无权限。
 - 设备未连接。
 - Canvas Unit 已卸载但仍在推帧。
+- `hostApi.secrets` 记录因宿主安全存储变化而解密失败。
+- OAuth provider 没有允许 loopback redirect URI，或回调 `state` 不匹配。
+- `jobs.cancel()` 在插件尚未完成清理前被误当成“请求取消”调用。
 
 排查步骤：
 
@@ -147,6 +164,12 @@ await super.onLoad(ctx)
 2. 检查 `manifest.json` 的 `permissions`。
 3. 运行 `flexcli plugin-v2 validate --plugin-dir .`。
 4. 查看 `flexcli plugin-v2 logs <uuid>`。
+
+与新权限相关的额外检查：
+
+- `secrets`：如果 `get()` 返回 `null` 但 `list()` 还能看到同名且 `encrypted: true` 的记录，通常是旧密文在当前系统上无法解密。让用户重新登录或重新保存 secret，不要尝试读取密文。
+- `oauth`：确认 provider 授权地址最终使用的是 loopback `redirect_uri`，并且不要依赖自定义 URI scheme。
+- `jobs`：取消流程应先由宿主把 `cancelRequested` 置为 `true`，插件轮询后完成清理，再调用 `jobs.cancel(jobId)` 收尾。
 
 ## 插件依赖 API 调用失败
 

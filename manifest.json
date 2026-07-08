@@ -11,6 +11,10 @@
   "minHostVersion": "1.0.0",
   "native": false,
   "platforms": ["win32-x64", "darwin-arm64", "darwin-x64", "linux-x64"],
+  "requiresNetwork": false,
+  "runtime": {
+    "startupTimeoutMs": 15000
+  },
   "devices": ["Flow2Pro", "FlexbarV2", "FlexBoardV1", "MassX"],
   "requiredCapabilities": [],
   "permissions": ["store", "logger", "device", "definitions", "bus", "unit", "ui"],

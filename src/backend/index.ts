@@ -41,6 +41,17 @@ export default class YourPlugin extends FlexPluginBase {
     await super.onLoad(ctx);
     this.logger.info('Plugin loaded');
 
+    // Keep startup quick: register RPC/events early and move slow remote sync into a
+    // background job. If you enable the `jobs` permission in manifest.json, a pattern
+    // like the block below is preferred over waiting inside onLoad().
+    //
+    // const job = await this.hostApi.jobs.create({
+    //   title: 'Initial sync',
+    //   progress: 0,
+    //   message: 'Queued',
+    // });
+    // void this.runInitialSync(job.id);
+
     this.registerRendererRpc('getMessage', async () => {
       return ctx.hostApi.store.get('message', 'Hello from plugin!');
     });
@@ -63,4 +74,26 @@ export default class YourPlugin extends FlexPluginBase {
       { snapshot: true }
     );
   }
+
+  // Optional example for plugins that declare the `jobs` permission:
+  //
+  // private async runInitialSync(jobId: string): Promise<void> {
+  //   try {
+  //     for (let step = 0; step < 4; step += 1) {
+  //       if (await this.hostApi.jobs.isCancellationRequested(jobId)) {
+  //         await this.hostApi.jobs.cancel(jobId);
+  //         return;
+  //       }
+  //
+  //       await this.hostApi.jobs.update(jobId, {
+  //         progress: (step + 1) * 25,
+  //         message: `Sync step ${step + 1}/4`,
+  //       });
+  //     }
+  //
+  //     await this.hostApi.jobs.complete(jobId, { synced: true });
+  //   } catch (error) {
+  //     await this.hostApi.jobs.fail(jobId, error instanceof Error ? error.message : String(error));
+  //   }
+  // }
 }

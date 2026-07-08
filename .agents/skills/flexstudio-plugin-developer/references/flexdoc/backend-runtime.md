@@ -55,6 +55,30 @@ abstract getDefinitions(): Promise<PluginDefinitionsPayload>
 5. 插件运行，处理事件、RPC、Host API 调用。
 6. 插件禁用、卸载或重载时，FlexStudio 调用 `onUnload()` 并关闭进程。
 
+## 启动阶段建议
+
+`onLoad()` 决定插件能否尽快进入可用状态。建议把它视为“接线和注册阶段”，而不是“把所有外部数据都准备好”的阶段。
+
+建议顺序：
+
+1. 先调用 `await super.onLoad(ctx)`。
+2. 尽早注册 Renderer RPC、依赖 API、事件订阅和必要的清理逻辑。
+3. 让 `getDefinitions()` 返回稳定的基础定义，或在确实需要时尽早 `registerDefinitions()`。
+4. 把远端同步、目录扫描、首轮索引、全量缓存预热等慢任务放到后台。
+
+尤其是带网络访问的插件，不要在 `onLoad()` 里等待远端登录、拉全量资源、扫完整目录或完成全量 provider 同步。更好的模式是：
+
+- 先让插件后端启动成功。
+- 先注册 definitions，让 Unit 和配置页尽快可见。
+- 再用 `hostApi.jobs` 启动慢同步，并通过进度或 snackbar 告知用户。
+
+如果插件确实需要更长的启动窗口，可以在 manifest 里设置 `runtime.startupTimeoutMs`，但这只是补充元数据，不是把慢任务塞进 `onLoad()` 的理由。
+
+### WebSocket 生命周期
+
+`hostApi.ws.connect()` 返回的 handle 属于当前插件后端进程。插件应尽量在 `onUnload()` 中主动调用 `close()` 关闭自己打开的 WebSocket，并取消已注册的消息监听，避免 reload 或 disable 时仍有业务逻辑继续处理旧连接消息。
+
+如果插件没有主动关闭，FlexStudio 也会在插件进程停止时强制关闭该插件剩余的 sockets，包括插件卸载、禁用、重载、崩溃或进程退出等场景。
 ## Unit 迁移 Hook
 
 插件更新后，旧项目里已经添加的插件 Unit 不会重新用 `defaultData` 创建。FlexStudio 会扫描当前项目 preset 中的旧版本插件 Unit，并在插件后端启用后调用可选的 `migrateUnit()` 实例方法。插件未实现该方法时视为 no-op，宿主仍会把 Unit 的 `plugin.pluginVersion` 更新到目标版本。
@@ -143,6 +167,8 @@ await this.registerDefinitions(payload)
 
 `registerDefinitions()` 需要 `definitions` 权限，并会替换当前插件此前注册的所有定义。
 
+对需要慢同步的插件，推荐先注册一版最小可用定义，再在后台 job 完成后按需刷新。这样用户可以更早看到插件条目和基础编辑器，而不是等待远端同步结束。
+
 辅助方法：
 
 ```ts
@@ -227,6 +253,17 @@ this.unregisterRendererRpc('lookupUser')
 ```
 
 RPC handler 必须返回可序列化结果。抛出的错误会返回给前端调用方。
+
+## 后台任务模式
+
+对远端 provider 同步、本地资源扫描、系统自动化索引或长时导入任务，推荐使用 `hostApi.jobs`：
+
+- `onLoad()` 只完成快速初始化。
+- 把慢任务放到异步函数中启动。
+- 用 `jobs.update()` 汇报进度和状态消息。
+- 定期轮询 `jobs.isCancellationRequested()`，在清理后调用 `jobs.cancel(jobId)`。
+
+这类任务的数据和自动化业务逻辑仍属于插件自身或其 native helper；FlexStudio core 只负责生命周期、权限、运行时 API 和任务记录。
 
 ## 插件依赖 API
 

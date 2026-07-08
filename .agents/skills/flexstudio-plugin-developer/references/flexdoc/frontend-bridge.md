@@ -103,6 +103,7 @@ const {
   setUnitData,
   backendRpc,
   showSnackbarMessage,
+  openConfigPage,
 } = useFlexBridge()
 
 const title = computed(() => unitData.value.title ?? '')
@@ -117,6 +118,10 @@ async function saveTitle(value: string) {
 
 async function testBackend() {
   await backendRpc('ping', [{ typeId: typeId.value }])
+}
+
+async function openSettings() {
+  await openConfigPage()
 }
 </script>
 ```
@@ -135,6 +140,7 @@ async function testBackend() {
 | `setUnitData(data)` | 更新当前 Unit 数据。 |
 | `backendRpc(method, params)` | 调用插件后端注册的 RPC。 |
 | `showSnackbarMessage(options)` | 在 FlexStudio 主 UI 中显示 snackbar。 |
+| `openConfigPage()` | 请求 FlexStudio 打开当前插件的设置页。宿主会按当前 iframe 上下文解析插件 UUID，插件不能用它打开其它插件的设置页。 |
 | `bridge` | 原始 bridge 实例。 |
 
 ## 原始 bridge
@@ -152,6 +158,7 @@ const data = await bridge.getUnitData()
 
 await bridge.setUnitData({ ...data, enabled: true })
 await bridge.backendRpc('refresh', [typeId])
+await bridge.openConfigPage()
 ```
 
 `createFrontendBridge()` 默认等待 8000ms。超时通常说明页面没有运行在 FlexStudio 插件 iframe 中，或 manifest 入口路径不正确。
@@ -181,6 +188,7 @@ interface PluginFrontendBridge {
   setUnit(unit: any): Promise<void>
   notifyViewReady(): void
   showSnackbarMessage(options: SnackbarMessageOptions): Promise<void>
+  openConfigPage(): Promise<void>
 }
 ```
 
@@ -245,6 +253,24 @@ this.registerRendererRpc('lookupUser', async (id: string) => {
   return { id, name: 'Ada' }
 })
 ```
+
+### 打开插件设置页
+
+当插件前端发现必须引导用户完成配置时，可以请求 FlexStudio 打开当前插件的设置页：
+
+```ts
+await bridge.openConfigPage()
+```
+
+在 Vue 组件中也可以通过 `useFlexBridge()` 使用：
+
+```ts
+const { openConfigPage } = useFlexBridge()
+
+await openConfigPage()
+```
+
+这个 API 不接收插件 UUID。FlexStudio 会根据当前 iframe 的 bridge 上下文打开同一个插件的设置页，避免插件跳转到其它插件的设置界面。
 
 ### Unit 数据
 

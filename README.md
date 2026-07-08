@@ -49,6 +49,8 @@ Releases are automated via GitHub Actions.
 
 If your plugin requires native Node.js addons, set `native: true` in `manifest.json`. The release workflow should build one package for each declared platform.
 
+If your plugin talks to internet or LAN services, also set `requiresNetwork: true`. The marketplace network badge is based on this metadata field; `http` and `websocket` permissions still control the actual Host API access.
+
 ## Manifest Fields
 
 | Field | Description |
@@ -57,10 +59,24 @@ If your plugin requires native Node.js addons, set `native: true` in `manifest.j
 | `minHostVersion` | Minimum FlexStudio version required by the plugin. |
 | `native` | Whether the plugin uses native Node.js addons. |
 | `platforms` | Supported OS and architecture combinations. |
+| `requiresNetwork` | Whether the plugin accesses internet or local network services. Set `true` for networked plugins. |
+| `runtime` | Optional backend runtime metadata such as `startupTimeoutMs`. Keep `onLoad()` fast and use jobs for slow sync. |
 | `devices` | Target device models. |
 | `requiredCapabilities` | Device capabilities required at runtime. |
 | `permissions` | Host API permissions. Sensitive permissions may require review. |
 | `dependencies` | Other marketplace plugins this plugin depends on. |
+
+## Optional Sensitive Permissions
+
+The template does not request `secrets`, `oauth`, or `jobs` by default. Add them only when your plugin actually uses those Host API namespaces.
+
+- `secrets`: store API keys, access tokens, and refresh tokens. FlexStudio normally encrypts them with Electron `safeStorage`; if encryption is unavailable or write-time encryption fails, the host stores plugin-scoped plaintext and shows a short warning. If a real encrypted record later fails to decrypt, `get()` returns no value, so your plugin should ask the user to re-save the secret.
+- `oauth`: start a host-managed loopback authorization flow with `state` validation. Token exchange and token storage remain your responsibility; store tokens through `hostApi.secrets`.
+- `jobs`: create host-owned in-memory progress records for long sync/import/index tasks. Cancellation is cooperative: the host requests cancel, your plugin polls `isCancellationRequested(jobId)`, performs cleanup, then calls `jobs.cancel(jobId)`.
+
+## Startup Guidance
+
+Keep `onLoad()` short. Register RPC handlers, dependency APIs, event subscriptions, and definitions early so the plugin becomes available quickly. Move slow provider sync, remote indexing, and bulk scanning into background jobs instead of blocking startup.
 
 ## Project Structure
 

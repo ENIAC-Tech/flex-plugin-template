@@ -31,6 +31,7 @@ flexcli plugin-v2 pack --dist-dir dist
 - `entry` 指向构建产物路径。
 - `permissions` 只包含实际需要的权限。
 - `native` 与 `platforms` 设置正确。
+- 需要联网的插件已设置 `requiresNetwork: true`。
 - `.marketplace/README.{lang}.md` 已准备好。
 - GitHub Release tag 使用语义化版本，例如 `v1.2.0`，并且规范化后必须与 `package.json` 的 `version` 一致。
 
@@ -122,6 +123,8 @@ workflow 会用该 secret 对 webhook payload 做 HMAC-SHA256 签名。
 6. 上传到 GitHub Release。
 7. 通知市场。
 
+即使插件声明了 `http` 或 `websocket` 权限，如果它会访问互联网或局域网，也仍应在 `manifest.json` 中保留 `requiresNetwork: true`，这样市场详情页和安装前提示才能正确显示网络标记。
+
 ## Native 插件
 
 `manifest.json` 中设置：
@@ -150,6 +153,10 @@ npm install -g <flexcli-package>
 npm run build
 flexcli plugin-v2 pack --platform <platform>
 ```
+
+发布 native 插件时，打包产物需要保留与源 manifest 一致的 `native` 和 `platforms` 元数据。市场和宿主依赖这两个字段判断兼容平台、展示兼容性标记，并决定是否按平台区分安装包。
+
+native 或系统自动化能力的业务逻辑仍属于插件代码或你自己的 native helper。FlexStudio core 不替插件实现自动化，只提供插件生命周期、权限校验、运行时 API 和市场兼容性标记。
 
 ## Webhook payload
 
