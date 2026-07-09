@@ -21,6 +21,8 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `packages/runtime/src/frontend-bridge.ts`: iframe bridge internals.
 - `packages/runtime/src/use-flex-bridge.ts`: Vue-facing bridge composable.
 - `packages/runtime/src/mount-flex-page.ts`: frontend page mounting.
+- `packages/runtime/src/plugin-i18n.ts`: framework-neutral plugin i18n locale fallback and interpolation helpers.
+- `packages/runtime/src/vue-i18n.ts`: Vue `usePluginI18n` adapter.
 - `packages/runtime/src/plugin-definitions-validate.ts`: definition validation.
 
 ## FlexCLI

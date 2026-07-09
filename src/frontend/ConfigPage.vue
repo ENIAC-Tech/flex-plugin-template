@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useFlexBridge } from '@flexsdk/runtime/vue';
+import { useFlexBridge, usePluginI18n } from '@flexsdk/runtime/vue';
+import { pluginI18nMessages } from './i18n-messages';
 
 const { isReady, backendRpc } = useFlexBridge();
-const message = ref('Hello from plugin!');
+const { t } = usePluginI18n({ messages: pluginI18nMessages, defaultLocale: 'en' });
+const message = ref(t('message.default'));
 
 watch(isReady, async (ready) => {
   if (!ready) return;
@@ -19,9 +21,9 @@ async function save() {
   <v-app>
     <v-main>
       <v-container class="pa-4">
-        <v-text-field v-model="message" label="Default Message" variant="solo-filled" density="compact" />
+        <v-text-field v-model="message" :label="t('config.defaultMessageLabel')" variant="solo-filled" density="compact" />
         <v-btn :disabled="!isReady" color="primary" variant="tonal" prepend-icon="mdi-content-save" @click="save">
-          Save Settings
+          {{ t('actions.saveSettings') }}
         </v-btn>
       </v-container>
     </v-main>

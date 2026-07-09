@@ -1,4 +1,11 @@
 {
   "@your-username/your-plugin-name.exampleUnit.name": "Example Unit",
-  "@your-username/your-plugin-name.config.title": "Plugin Settings"
+  "@your-username/your-plugin-name.config.title": "Plugin Settings",
+  "actions.save": "Save",
+  "actions.saveAppearance": "Save appearance",
+  "actions.saveSettings": "Save Settings",
+  "appearance.unitNameLabel": "Unit name",
+  "config.defaultMessageLabel": "Default Message",
+  "message.default": "Hello from plugin!",
+  "unit.messageLabel": "Message"
 }

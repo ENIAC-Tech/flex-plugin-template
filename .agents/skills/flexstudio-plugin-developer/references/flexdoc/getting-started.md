@@ -136,7 +136,7 @@ export default class DemoPlugin extends FlexPluginBase {
 插件页面运行在 iframe 中。Vue 页面可以用 `mountFlexPage()` 挂载：
 
 ```ts
-import { mountFlexPage } from '@flexsdk/runtime'
+import { mountFlexPage } from '@flexsdk/runtime/vue'
 import UnitFunctionEditor from './UnitFunctionEditor.vue'
 
 mountFlexPage({
@@ -149,7 +149,7 @@ mountFlexPage({
 在组件中使用 `useFlexBridge()` 访问宿主：
 
 ```ts
-import { useFlexBridge } from '@flexsdk/runtime'
+import { useFlexBridge } from '@flexsdk/runtime/vue'
 
 const { unitData, setUnitData, backendRpc, showSnackbarMessage } = useFlexBridge()
 

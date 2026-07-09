@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useFlexBridge } from '@flexsdk/runtime/vue';
+import { useFlexBridge, usePluginI18n } from '@flexsdk/runtime/vue';
+import { pluginI18nMessages } from './i18n-messages';
 
 const { isReady, bridge } = useFlexBridge();
+const { t } = usePluginI18n({ messages: pluginI18nMessages, defaultLocale: 'en' });
 const unitName = ref('');
 
 watch(isReady, async (ready) => {
@@ -27,9 +29,9 @@ async function save() {
   <v-app>
     <v-main>
       <v-container class="pa-4">
-        <v-text-field v-model="unitName" label="Unit name" variant="solo-filled" density="compact" />
+        <v-text-field v-model="unitName" :label="t('appearance.unitNameLabel')" variant="solo-filled" density="compact" />
         <v-btn :disabled="!isReady" color="primary" variant="tonal" prepend-icon="mdi-content-save" @click="save">
-          Save appearance
+          {{ t('actions.saveAppearance') }}
         </v-btn>
       </v-container>
     </v-main>

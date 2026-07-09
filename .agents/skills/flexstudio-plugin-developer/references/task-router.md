@@ -10,7 +10,7 @@ Read only the references needed for the current task.
 | Add or change Unit definitions | `flexdoc/unit-definitions.md`, `flexdoc/backend-runtime.md`, `flexdoc/frontend-bridge.md` |
 | Add or change Unit migration/update hooks | `flexdoc/backend-runtime.md`, `flexdoc/unit-definitions.md`, `flexdoc/marketplace-release.md`, `flexdoc/overview.md` |
 | Implement backend behavior | `flexdoc/backend-runtime.md`, `flexdoc/host-api-reference.md`, `flexdoc/dependency-api.md` |
-| Implement frontend editor/view/config UI | `flexdoc/frontend-bridge.md`, `flexdoc/ui-ux-guidelines.md`, `flexdoc/unit-definitions.md` |
+| Implement frontend editor/view/config UI or i18n | `flexdoc/frontend-bridge.md`, `flexdoc/ui-ux-guidelines.md`, `flexdoc/project-structure.md`, `flexdoc/unit-definitions.md` |
 | Use Host API or permissions | `flexdoc/host-api-reference.md`, `flexdoc/manifest.md` |
 | Use plugin dependency APIs | `flexdoc/dependency-api.md`, `flexdoc/manifest.md` |
 | Debug load/RPC/permission/migration/dev reload failures | `flexdoc/troubleshooting.md`, then the feature-specific docs above |

@@ -7,7 +7,7 @@
 推荐使用 `mountFlexPage()` 挂载 Vue 页面：
 
 ```ts
-import { mountFlexPage } from '@flexsdk/runtime'
+import { mountFlexPage } from '@flexsdk/runtime/vue'
 import UnitFunctionEditor from './UnitFunctionEditor.vue'
 import UnitAppearanceEditor from './UnitAppearanceEditor.vue'
 import UnitView from './UnitView.vue'
@@ -62,7 +62,7 @@ mountFlexPage({
 
 ```ts
 import { createVuetify } from 'vuetify'
-import { mountFlexPage } from '@flexsdk/runtime'
+import { mountFlexPage } from '@flexsdk/runtime/vue'
 
 const vuetify = createVuetify()
 
@@ -90,7 +90,7 @@ mountFlexPage({
 ```vue
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useFlexBridge } from '@flexsdk/runtime'
+import { useFlexBridge } from '@flexsdk/runtime/vue'
 
 const {
   isReady,
@@ -142,6 +142,42 @@ async function openSettings() {
 | `showSnackbarMessage(options)` | 在 FlexStudio 主 UI 中显示 snackbar。 |
 | `openConfigPage()` | 请求 FlexStudio 打开当前插件的设置页。宿主会按当前 iframe 上下文解析插件 UUID，插件不能用它打开其它插件的设置页。 |
 | `bridge` | 原始 bridge 实例。 |
+
+## usePluginI18n
+
+Vue 插件页面推荐使用 SDK 官方 i18n adapter，而不是在每个插件里复制一份私有 `i18n.ts`：
+
+```vue
+<script setup lang="ts">
+import en from '../../locales/en.json'
+import zhCN from '../../locales/zh-CN.json'
+import { usePluginI18n } from '@flexsdk/runtime/vue'
+
+const { locale, language, t } = usePluginI18n({
+  defaultLocale: 'en',
+  messages: {
+    en,
+    'zh-CN': zhCN,
+    zh: zhCN,
+  },
+})
+</script>
+
+<template>
+  <v-btn>{{ t('actions.save') }}</v-btn>
+  <span>{{ t('status.connectedAs', { name: 'Flexbar' }) }}</span>
+</template>
+```
+
+`usePluginI18n()` 会读取 `useFlexBridge().language`，并随宿主语言变化重新匹配 locale。返回值：
+
+| 字段 | 说明 |
+| --- | --- |
+| `language` | 宿主当前语言 ref，例如 `en`、`zh-CN`。 |
+| `locale` | 实际命中的插件资源 locale。匹配顺序为精确 locale → 基础语言 → `defaultLocale`。 |
+| `t(key, params)` | 翻译函数。缺失 key 返回 key；插值支持 `{{name}}` 和 `{name}`。 |
+
+如果不使用 Vue，也可以从 `@flexsdk/runtime` 导入框架无关的 `createPluginI18n()` 或 `translate()`。当前 SDK 不默认自动读取 `dist/locales/{locale}.json`；插件应显式导入或传入 messages，避免 iframe asset base path、dev/prod 路径和 CSP 差异带来的不确定性。
 
 ## 原始 bridge
 

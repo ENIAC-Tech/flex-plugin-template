@@ -107,7 +107,28 @@ manifest 应该提交到仓库根目录，并在构建时复制到 `dist/manifes
 
 `locales/` 存放插件本地化资源。manifest 中可以通过 `defaultLocale` 和 `supportedLocales` 声明默认语言和支持语言。
 
-建议至少提供默认语言文件，并让插件 UI 中所有用户可见文本都走本地化资源或插件自己的 i18n 层。
+建议至少提供默认语言文件，并让插件 UI 中所有用户可见文本都走 SDK i18n 或高级自定义 i18n 层。`@flexsdk/runtime` 提供框架无关的 `createPluginI18n()` / `translate()`，Vue 前端页面可以从 `@flexsdk/runtime/vue` 使用 `usePluginI18n()`。
+
+当前 SDK i18n 推荐由插件显式导入或传入 messages：
+
+```ts
+import en from '../../locales/en.json'
+import zhCN from '../../locales/zh-CN.json'
+import { createPluginI18n } from '@flexsdk/runtime'
+
+const i18n = createPluginI18n({
+  defaultLocale: 'en',
+  messages: {
+    en,
+    'zh-CN': zhCN,
+    zh: zhCN,
+  },
+})
+
+i18n.t('config.saved', { name: 'Flexbar' })
+```
+
+语言匹配顺序为：精确 locale（如 `zh-CN`）→ 基础语言（如 `zh`）→ `defaultLocale`。缺失 key 会返回 key 本身。插值支持 `{{name}}` 和 `{name}` 两种占位符。CLI 会继续把 `locales/` 复制到 `dist/locales/`；SDK 不会默认自动 fetch 这些文件，避免插件 iframe asset 路径、dev/prod base path 和 CSP 约定不一致。
 
 ## assets
 
