@@ -18,8 +18,10 @@ async function save() {
   <v-app>
     <v-main>
       <v-container class="pa-4">
-        <v-text-field v-model="message" label="Message" variant="outlined" />
-        <v-btn :disabled="!isReady" color="primary" @click="save">Save</v-btn>
+        <v-text-field v-model="message" label="Message" variant="solo-filled" density="compact" />
+        <v-btn :disabled="!isReady" color="primary" variant="tonal" prepend-icon="mdi-content-save" @click="save">
+          Save
+        </v-btn>
       </v-container>
     </v-main>
   </v-app>

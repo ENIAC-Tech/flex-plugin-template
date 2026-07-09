@@ -20,7 +20,8 @@ If the task needs source-code confirmation, read `references/source-map.md` to l
 ## Operating Rules
 
 - Do not guess manifest fields, Host API names, CLI flags, bridge methods, or Unit definition shapes. Load the relevant reference first.
-- Treat `manifest.json`, backend runtime, frontend bridge pages, Unit definitions, and release workflow as one system. Check cross-file contracts when changing any of them.
+- Treat `manifest.json`, backend runtime, frontend bridge pages, Unit definitions, UI/UX guidelines, and release workflow as one system. Check cross-file contracts when changing any of them.
+- When designing plugin UI, load `references/flexdoc/ui-ux-guidelines.md` and follow FlexStudio's Vuetify 3 component, variant, density, color, and layout conventions.
 - Use `flexcli plugin-v2 validate`, `flexcli plugin-v2 build`, and `flexcli plugin-v2 pack` when verifying plugin changes.
 - Keep generated plugin projects compatible with the template structure unless the user explicitly asks for a custom structure.
 - When docs and local code disagree, prefer the local package/API version in the plugin project, then note the mismatch.

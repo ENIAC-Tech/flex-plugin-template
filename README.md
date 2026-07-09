@@ -10,6 +10,8 @@ This template includes a local Codex/OpenAI-compatible skill for FlexStudio plug
 
 Use that skill when asking an agent to edit plugin code, manifest fields, Unit definitions, backend runtime behavior, frontend iframe pages, Host API usage, dependency APIs, CLI workflows, or marketplace release setup. The skill routes the agent to the bundled FlexStudio plugin docs snapshot under `.agents/skills/flexstudio-plugin-developer/references/flexdoc/`.
 
+Frontend plugin pages should follow the bundled UI/UX guideline at `.agents/skills/flexstudio-plugin-developer/references/flexdoc/ui-ux-guidelines.md`: use Vuetify 3 components, compact density, `solo-filled` fields, `tonal` buttons, FlexStudio theme tokens, and avoid decorative copy or nested containers.
+
 ## Development
 
 ```bash
