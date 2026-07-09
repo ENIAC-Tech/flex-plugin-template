@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { useFlexBridge } from '@flexsdk/runtime';
+import { useFlexBridge } from '@flexsdk/runtime/vue';
 
 const { isReady, backendRpc } = useFlexBridge();
 const message = ref('Hello from plugin!');

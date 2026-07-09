@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, nextTick } from 'vue';
-import { useFlexBridge } from '@flexsdk/runtime';
+import { useFlexBridge } from '@flexsdk/runtime/vue';
 
 const { isReady, bridge, typeId } = useFlexBridge();
 const title = ref('');
