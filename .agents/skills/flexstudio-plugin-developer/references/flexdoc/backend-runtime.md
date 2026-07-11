@@ -2,6 +2,10 @@
 
 插件后端运行在 FlexStudio 启动的独立 Node.js 进程中。后端负责生命周期、定义注册、Host API 调用、设备事件处理、Canvas 推帧和前端 RPC。
 
+## 依赖状态订阅
+
+Dependency State Channel 的 Provider 注册/发布与 Consumer 订阅都应在 `onLoad()` 中、`await super.onLoad(ctx)` 之后尽早完成。Consumer 的 handler 在自身后端进程串行执行；SDK 会在 handler 成功或失败后 ACK。不要把 handler 传给 Host，也不要在 `onLoad()` 中等待 Provider 发布首个 snapshot。Provider 暂不可用时 Consumer 会收到 `unavailable`；Provider 重启后会收到更高 epoch 的 `available`，随后可能收到 replay snapshot。`onUnload()` 会自动 best-effort unsubscribe，本地也可保存并提前调用 unsubscribe。
+
 ## 入口类
 
 推荐后端默认导出继承 `FlexPluginBase` 的类：

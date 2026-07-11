@@ -63,6 +63,8 @@
 
 ## 字段参考
 
+Dependency State Channel 不新增 manifest 字段或 permission enum。订阅其他插件状态的 Consumer 复用 `pluginApi`，并必须在 `dependencies` 中声明 Provider 为直接依赖；只注册或发布状态的 Provider 不需要新增权限。
+
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `schemaVersion` | `'1.0'` | 是 | manifest schema 版本。当前使用 `1.0`。 |

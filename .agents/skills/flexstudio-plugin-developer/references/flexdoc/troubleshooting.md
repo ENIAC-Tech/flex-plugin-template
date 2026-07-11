@@ -2,6 +2,14 @@
 
 本页按开发阶段整理常见问题。优先使用 `flexcli plugin-v2 validate`、`plugin-v2 dev`、`plugin-v2 logs` 和 `plugin-v2 diagnostics` 定位问题。
 
+## Dependency State Channel
+
+- `lacks permission 'pluginApi'`：Consumer 的 manifest 缺少 `pluginApi`；Provider 不需要因为发布状态而添加该权限。
+- `does not directly depend on`：Consumer 必须在 `dependencies` 中直接声明 Provider，传递依赖不允许订阅。
+- `channel ... is unavailable`：Provider 尚未注册该 channel、已禁用，或进程已经退出；等待新的 `available` 后再订阅或恢复状态。
+- payload JSON/64 KiB 错误：payload 根必须是 plain object，不能包含 Date、Map、Set、BigInt、函数、循环引用或非有限数字。
+- revision 不连续或 `resyncRequired`：清除 Consumer 本地缓存，使用事件携带的完整 snapshot 覆盖；收到更高 `providerEpoch` 时同样清除旧状态。
+
 ## CLI 无法连接 FlexStudio
 
 现象：

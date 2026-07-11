@@ -48,6 +48,8 @@ Host API 不是自由调用接口。每次调用都会经过 Capability Registry
 
 依赖 API 不会自动授予传递性调用权限。`plugin-a -> plugin-b -> plugin-c` 中，`plugin-a` 只能调用 `plugin-b`；如果需要使用 `plugin-c` 的能力，应由 `plugin-b` 暴露自己的 API 进行组合或转发。开发细节见 [插件依赖 API](./dependency-api.md)。
 
+当 Consumer 需要持续接收直接依赖 Provider 的最新状态时，使用 Dependency State Channel。它由主进程保留最新状态、控制 replay/ACK/背压与 Provider 生命周期；不要把这类私有依赖状态发布到全局事件总线。State Channel 仍复用 Consumer 的 `pluginApi` 权限，不新增 manifest 字段，详见 [插件依赖 API](./dependency-api.md#dependency-state-channel)。
+
 ### 项目中的插件依赖快照
 
 项目不会维护一份全局插件清单。每个 preset 会维护自己的 `pluginDependencies` 快照，记录该 preset 中正式 Unit 使用到的插件 UUID、版本、市场 listing id、Unit 数量和更新时间。项目打开时只汇总各 preset 的快照，不再遍历所有 Unit 重新推导依赖。

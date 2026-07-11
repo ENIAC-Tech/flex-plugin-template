@@ -80,6 +80,17 @@ The template does not request `secrets`, `oauth`, or `jobs` by default. Add them
 
 Keep `onLoad()` short. Register RPC handlers, dependency APIs, event subscriptions, and definitions early so the plugin becomes available quickly. Move slow provider sync, remote indexing, and bulk scanning into background jobs instead of blocking startup.
 
+## Dependency State Channel
+
+Use the Dependency State Channel when a plugin needs to publish retained state to a declared direct dependency. A Provider registers a channel and publishes JSON snapshots or deltas; a Consumer declares both `pluginApi` and the Provider in `dependencies`, then subscribes with `onDependencyState()`. The channel is not a global bus and does not add manifest fields or permissions for Providers.
+
+```ts
+// Provider: await this.registerDependencyStateChannel('playback')
+// Consumer: await this.onDependencyState('@acme/provider', 'playback', onState, { replayLatest: true })
+```
+
+Treat `resyncRequired` as a full local-cache replacement, and discard local state when `providerEpoch` increases. See the bundled `dependency-api.md` before adding this capability.
+
 ## Project Structure
 
 ```text

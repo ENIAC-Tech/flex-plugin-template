@@ -2,6 +2,34 @@
 
 插件依赖 API 用于让一个插件后端显式暴露可被直接依赖插件调用的方法。典型场景是把底层能力封装成基础插件，再由上层插件复用，例如：
 
+## Dependency State Channel
+
+当依赖插件需要持续发布“最新状态”而不是单次请求/响应时，使用由宿主治理的 State Channel。它不是全局事件总线：Consumer 必须在 manifest 中声明 Provider 为直接依赖，并声明现有的 `pluginApi` 权限；Provider 不需要新权限或 manifest 字段。
+
+Provider 在 `onLoad()` 中注册稳定、全小写的 channel 名称，再发布完整 snapshot 或 RFC 7396 Merge Patch delta：
+
+```ts
+await this.registerDependencyStateChannel('playback')
+await this.publishDependencyState('playback', {
+  kind: 'snapshot',
+  payload: { playing: true, position: 0 },
+})
+```
+
+Consumer 使用 `onDependencyState()` 订阅，并保存返回的 unsubscribe 函数；`replayLatest: true` 先收到 `available`，随后收到当前完整 snapshot（如果 Provider 已发布状态）。
+
+```ts
+const unsubscribe = await this.onDependencyState('@acme/provider', 'playback', async (event) => {
+  if (event.kind === 'unavailable') return
+  if (event.resyncRequired) {
+    // Discard local cache and replace it with event.payload.
+  }
+  // Apply snapshot/delta using event.providerEpoch and event.revision ordering.
+}, { replayLatest: true })
+```
+
+回调只存在于 Consumer 自己的后端进程；不会跨 IPC 传递函数。SDK 在 handler 完成（即使抛错）后 ACK，宿主才会投递下一项。Provider 重启时 epoch 增加；Consumer 收到更高 epoch 时必须丢弃旧状态。payload 必须是根对象的 JSON，最大 64 KiB；高频合并或队列溢出时，宿主发送带 `resyncRequired: true` 的完整 snapshot。不要用 `bus.emit()` 或 topic 前缀替代该能力。
+
 ```text
 plugin-a -> plugin-b -> plugin-c
 ```
