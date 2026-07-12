@@ -8,6 +8,8 @@ const title = ref('');
 const runtimeStatus = ref<Record<string, RendererStateJson> | null>(null);
 let unsubscribeRuntime: (() => Promise<void>) | null = null;
 let unsubscribeUnit: (() => void) | null = null;
+let runtimeEpoch = -1;
+let runtimeRevision = -1;
 
 watch(isReady, async (ready) => {
   if (!ready || !bridge.value) return;
@@ -17,9 +19,24 @@ watch(isReady, async (ready) => {
   unsubscribeRuntime = await bridge.value.subscribeRendererState(
     'runtime-status',
     (event: RendererStateEnvelope) => {
-      if (event.kind === 'unavailable' || (event.kind === 'delta' && event.resyncRequired)) runtimeStatus.value = null;
+      // Reject stale envelopes before changing either the snapshot or cursors.
+      if (event.providerEpoch < runtimeEpoch) return;
+      if (event.providerEpoch === runtimeEpoch && event.revision <= runtimeRevision) return;
+
+      const newEpoch = event.providerEpoch > runtimeEpoch;
+      const contiguous = !newEpoch && event.revision === runtimeRevision + 1;
+      if (newEpoch) runtimeStatus.value = null;
+
+      if (event.kind === 'unavailable') runtimeStatus.value = null;
+      else if (event.kind === 'available') { /* wait for a complete snapshot */ }
+      else if (event.resyncRequired) runtimeStatus.value = null;
       else if (event.kind === 'snapshot') runtimeStatus.value = { ...event.payload };
-      else if (event.kind === 'delta' && runtimeStatus.value) runtimeStatus.value = { ...runtimeStatus.value, ...event.payload };
+      else if (event.kind === 'delta' && contiguous && runtimeStatus.value) {
+        runtimeStatus.value = { ...runtimeStatus.value, ...event.payload };
+      } else runtimeStatus.value = null; // gap/new epoch/missing snapshot: wait for replay/resync
+
+      runtimeEpoch = event.providerEpoch;
+      runtimeRevision = event.revision;
     },
     { replayLatest: true }
   );

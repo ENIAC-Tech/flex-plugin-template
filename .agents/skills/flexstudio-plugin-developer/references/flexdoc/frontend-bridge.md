@@ -281,6 +281,7 @@ bridge.logger.error(new Error('failed'))
 
 ```ts
 const result = await bridge.backendRpc('lookupUser', ['42'])
+```
 
 ## Renderer State Channel
 
@@ -310,10 +311,19 @@ onMounted(async () => {
   unsubscribe = await bridge.value!.subscribeRendererState(
     'runtime-status',
     async (event) => {
-      if (event.kind === 'unavailable' || event.resyncRequired) state.value = null
-      else if (event.kind === 'available') return
+      // Ignore stale envelopes before mutating state or cursors.
+      if (event.providerEpoch < epoch) return
+      if (event.providerEpoch === epoch && event.revision <= revision) return
+
+      const newEpoch = event.providerEpoch > epoch
+      const contiguous = !newEpoch && event.revision === revision + 1
+      if (newEpoch) state.value = null
+
+      if (event.kind === 'unavailable') state.value = null
+      else if (event.kind === 'available') { /* wait for a complete snapshot */ }
+      else if (event.resyncRequired) state.value = null
       else if (event.kind === 'snapshot') state.value = { ...event.payload }
-      else if (event.providerEpoch === epoch && event.revision === revision + 1 && state.value) {
+      else if (event.kind === 'delta' && contiguous && state.value) {
         state.value = { ...state.value, ...event.payload }
       } else state.value = null // 等待 replay/resync snapshot
       epoch = event.providerEpoch
@@ -327,7 +337,6 @@ onUnmounted(() => { if (unsubscribe) void unsubscribe() })
 ```
 
 `available`/`unavailable` 表示 Provider 可用性。新 epoch、revision gap 或 `resyncRequired` 都应丢弃本地缓存并等待完整 snapshot；旧 revision 必须忽略。单个 JSON-object payload 上限为 64 KiB。
-```
 
 后端需要先注册同名方法：
 

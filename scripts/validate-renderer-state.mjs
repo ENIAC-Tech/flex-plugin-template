@@ -13,6 +13,12 @@ assert.match(backend, /registerRendererStateChannel/);
 assert.match(backend, /publishRendererState/);
 assert.match(view, /subscribeRendererState/);
 assert.match(view, /replayLatest:\s*true/);
+assert.match(view, /providerEpoch/);
+assert.match(view, /revision/);
+assert.match(view, /event\.providerEpoch < runtimeEpoch/);
+assert.match(view, /event\.revision <= runtimeRevision/);
+assert.match(view, /event\.revision === runtimeRevision \+ 1/);
+assert.match(view, /resyncRequired/);
 assert.match(view, /onUnmounted/);
 assert.doesNotMatch(view, /setInterval|setTimeout/);
 for (const source of [readme, agents]) {
