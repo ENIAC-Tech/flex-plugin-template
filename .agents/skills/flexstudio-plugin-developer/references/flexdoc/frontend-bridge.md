@@ -321,8 +321,8 @@ onMounted(async () => {
 
       if (event.kind === 'unavailable') state.value = null
       else if (event.kind === 'available') { /* wait for a complete snapshot */ }
-      else if (event.resyncRequired) state.value = null
       else if (event.kind === 'snapshot') state.value = { ...event.payload }
+      else if (event.resyncRequired) state.value = null
       else if (event.kind === 'delta' && contiguous && state.value) {
         state.value = { ...state.value, ...event.payload }
       } else state.value = null // 等待 replay/resync snapshot
@@ -336,7 +336,7 @@ onMounted(async () => {
 onUnmounted(() => { if (unsubscribe) void unsubscribe() })
 ```
 
-`available`/`unavailable` 表示 Provider 可用性。新 epoch、revision gap 或 `resyncRequired` 都应丢弃本地缓存并等待完整 snapshot；旧 revision 必须忽略。单个 JSON-object payload 上限为 64 KiB。
+`available`/`unavailable` 表示 Provider 可用性。旧 epoch/revision 必须先忽略。新 epoch 或 revision gap 会丢弃本地缓存；Host 发出的 `kind: 'snapshot', resyncRequired: true` 是权威恢复状态，应清空后立即应用该 snapshot。只有非 snapshot 的 `resyncRequired` 才清空并等待完整 snapshot。单个 JSON-object payload 上限为 64 KiB。
 
 后端需要先注册同名方法：
 

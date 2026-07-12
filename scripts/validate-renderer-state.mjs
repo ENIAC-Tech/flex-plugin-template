@@ -19,6 +19,10 @@ assert.match(view, /event\.providerEpoch < runtimeEpoch/);
 assert.match(view, /event\.revision <= runtimeRevision/);
 assert.match(view, /event\.revision === runtimeRevision \+ 1/);
 assert.match(view, /resyncRequired/);
+assert.ok(
+  view.indexOf("event.kind === 'snapshot'") < view.indexOf('event.resyncRequired'),
+  'authoritative snapshots must be applied before non-snapshot resync clearing'
+);
 assert.match(view, /onUnmounted/);
 assert.doesNotMatch(view, /setInterval|setTimeout/);
 for (const source of [readme, agents]) {

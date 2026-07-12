@@ -29,8 +29,8 @@ watch(isReady, async (ready) => {
 
       if (event.kind === 'unavailable') runtimeStatus.value = null;
       else if (event.kind === 'available') { /* wait for a complete snapshot */ }
-      else if (event.resyncRequired) runtimeStatus.value = null;
       else if (event.kind === 'snapshot') runtimeStatus.value = { ...event.payload };
+      else if (event.resyncRequired) runtimeStatus.value = null;
       else if (event.kind === 'delta' && contiguous && runtimeStatus.value) {
         runtimeStatus.value = { ...runtimeStatus.value, ...event.payload };
       } else runtimeStatus.value = null; // gap/new epoch/missing snapshot: wait for replay/resync
