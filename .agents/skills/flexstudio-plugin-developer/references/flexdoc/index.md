@@ -7,11 +7,12 @@ FlexStudio 插件用于把新的设备能力、Unit 类型、编辑器页面、C
 ## 建议阅读顺序
 
 1. 阅读 [插件系统概览](./overview.md)，先理解插件在 FlexStudio 中的运行模型。
-2. 按 [快速开始](./getting-started.md) 创建插件，并用 `plugin-v2 dev` 在 FlexStudio 中调试。
-3. 根据插件需要完善 [Manifest 配置](./manifest.md) 和 [Unit 定义](./unit-definitions.md)。
-4. 使用 [后端运行时](./backend-runtime.md)、[插件依赖 API](./dependency-api.md)、[前端桥接](./frontend-bridge.md) 和 [Host API Reference](./host-api-reference.md) 开发功能。
-5. 发布前使用 [CLI Reference](./cli-reference.md) 验证、构建、打包插件。
-6. 按 [发布到插件市场](./marketplace-release.md) 配置 GitHub Release 自动发布。
+2. 设计或重构连接外部服务的产品前，阅读 [产品级插件设计指导](./product-plugin-design-guide.md)，先确定产品边界、状态闭环和 Unit 模型。
+3. 按 [快速开始](./getting-started.md) 创建插件，并用 `plugin-v2 dev` 在 FlexStudio 中调试。
+4. 根据插件需要完善 [Manifest 配置](./manifest.md) 和 [Unit 定义](./unit-definitions.md)。
+5. 使用 [后端运行时](./backend-runtime.md)、[插件依赖 API](./dependency-api.md)、[前端桥接](./frontend-bridge.md) 和 [Host API Reference](./host-api-reference.md) 开发功能。
+6. 发布前使用 [CLI Reference](./cli-reference.md) 验证、构建、打包插件。
+7. 按 [发布到插件市场](./marketplace-release.md) 配置 GitHub Release 自动发布。
 
 ## 插件能做什么
 

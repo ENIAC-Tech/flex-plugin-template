@@ -1,6 +1,6 @@
 # Bundled FlexStudio Plugin Docs Index
 
-Source commit: `0b6c65e5ca5eff101629cc8c3d6ba09bcb17c026`
+Source commit: `564090f898de2503b5ae5204ba83e6ec4b8510f7`
 Source path: `docs/zh/sdk/plugin-development`
 
 Load only the docs needed for the current task.
@@ -9,6 +9,7 @@ Load only the docs needed for the current task.
 |---|---|
 | `flexdoc/index.md` | Entry page for plugin development documentation. |
 | `flexdoc/overview.md` | System architecture, runtime model, lifecycle, permissions, and release overview. |
+| `flexdoc/product-plugin-design-guide.md` | Product plugin architecture, Unit modeling, state synchronization, settings, and review guidance. |
 | `flexdoc/getting-started.md` | First plugin workflow from scaffold to local dev. |
 | `flexdoc/project-structure.md` | Expected plugin project layout and generated files. |
 | `flexdoc/manifest.md` | Manifest fields, permissions, entries, platforms, devices, and dependencies. |

@@ -15,6 +15,7 @@ const pluginDocsJsonPath = join(repoRoot, '.flexstudio', 'plugin-docs.json')
 const DOC_FILE_ORDER = [
   'index.md',
   'overview.md',
+  'product-plugin-design-guide.md',
   'getting-started.md',
   'project-structure.md',
   'manifest.md',
@@ -32,6 +33,7 @@ const DOC_FILE_ORDER = [
 const DOC_DESCRIPTIONS = {
   'index.md': 'Entry page for plugin development documentation.',
   'overview.md': 'System architecture, runtime model, lifecycle, permissions, and release overview.',
+  'product-plugin-design-guide.md': 'Product plugin architecture, Unit modeling, state synchronization, settings, and review guidance.',
   'getting-started.md': 'First plugin workflow from scaffold to local dev.',
   'project-structure.md': 'Expected plugin project layout and generated files.',
   'manifest.md': 'Manifest fields, permissions, entries, platforms, devices, and dependencies.',
