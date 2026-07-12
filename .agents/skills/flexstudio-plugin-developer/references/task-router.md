@@ -13,6 +13,7 @@ Read only the references needed for the current task.
 | Implement frontend editor/view/config UI or i18n | `flexdoc/frontend-bridge.md`, `flexdoc/ui-ux-guidelines.md`, `flexdoc/project-structure.md`, `flexdoc/unit-definitions.md` |
 | Use Host API or permissions | `flexdoc/host-api-reference.md`, `flexdoc/manifest.md` |
 | Use plugin dependency APIs or Dependency State Channel | `flexdoc/dependency-api.md`, `flexdoc/manifest.md`, `flexdoc/backend-runtime.md` |
+| Use a Renderer State Channel for same-plugin UI state | `flexdoc/frontend-bridge.md`, `flexdoc/backend-runtime.md`, `flexdoc/host-api-reference.md`, `flexdoc/dependency-api.md` |
 | Debug load/RPC/permission/migration/dev reload failures | `flexdoc/troubleshooting.md`, then the feature-specific docs above |
 | Prepare a marketplace release | `flexdoc/marketplace-release.md`, `flexdoc/cli-reference.md`, `flexdoc/manifest.md` |
 | Need exact source locations | `source-map.md` |

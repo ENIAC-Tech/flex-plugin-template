@@ -112,3 +112,6 @@
 - 是否所有用户可见文案都走本地化资源？
 - 是否所有小尺寸 Unit 视图都能处理文字溢出和动态数据更新？
 - 如果设计需要插件系统新增能力、跨平台能力不一致或无法用当前 SDK 表达，是否已经停下来报告？
+# 实时状态 UI
+
+持续的同插件 UI 状态使用 Renderer State Channel retained replay，不用 interval 或 long-polling。`unavailable`、等待 replay snapshot、`resyncRequired` 应显示稳定的不可用/同步中状态，避免闪烁、阻塞交互或展示跨 epoch 的陈旧值。Vue 组件在 mount 订阅并在 unmount 主动 unsubscribe；Host 的 session cleanup 只是安全网。

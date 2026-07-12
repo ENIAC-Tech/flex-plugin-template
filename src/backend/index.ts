@@ -3,6 +3,7 @@ import type { PluginDefinitionsPayload, PluginEventEnvelope, PluginLoadContext }
 
 const PLUGIN_UUID = '@your-username/your-plugin-name';
 const UNIT_TYPE_ID = `${PLUGIN_UUID}.example-unit`;
+const RUNTIME_STATUS_CHANNEL = 'runtime-status';
 
 export default class YourPlugin extends FlexPluginBase {
   async getDefinitions(): Promise<PluginDefinitionsPayload> {
@@ -41,6 +42,14 @@ export default class YourPlugin extends FlexPluginBase {
     await super.onLoad(ctx);
     this.logger.info('Plugin loaded');
 
+    // Renderer State Channels retain same-plugin UI state. Register first, then
+    // publish a complete snapshot; later actions can publish small deltas.
+    await this.registerRendererStateChannel(RUNTIME_STATUS_CHANNEL);
+    await this.publishRendererState(RUNTIME_STATUS_CHANNEL, {
+      kind: 'snapshot',
+      payload: { status: 'ready', message: 'Hello from plugin!' }
+    });
+
     // Keep startup quick: register RPC/events early and move slow remote sync into a
     // background job. If you enable the `jobs` permission in manifest.json, a pattern
     // like the block below is preferred over waiting inside onLoad().
@@ -58,6 +67,10 @@ export default class YourPlugin extends FlexPluginBase {
 
     this.registerRendererRpc('setMessage', async (message: string) => {
       await ctx.hostApi.store.set('message', message);
+      await this.publishRendererState(RUNTIME_STATUS_CHANNEL, {
+        kind: 'delta',
+        payload: { message, updatedAt: new Date().toISOString() }
+      });
       return { success: true };
     });
 

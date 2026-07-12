@@ -6,6 +6,28 @@
 
 Dependency State Channel 的 Provider 注册/发布与 Consumer 订阅都应在 `onLoad()` 中、`await super.onLoad(ctx)` 之后尽早完成。Consumer 的 handler 在自身后端进程串行执行；SDK 会在 handler 成功或失败后 ACK。不要把 handler 传给 Host，也不要在 `onLoad()` 中等待 Provider 发布首个 snapshot。Provider 暂不可用时 Consumer 会收到 `unavailable`；Provider 重启后会收到更高 epoch 的 `available`，随后可能收到 replay snapshot。`onUnload()` 会自动 best-effort unsubscribe，本地也可保存并提前调用 unsubscribe。
 
+## Renderer State Channel
+
+同插件 UI 的持续状态在 `onLoad()` 注册并发布完整 snapshot：
+
+```ts
+await this.registerRendererStateChannel('runtime-status')
+await this.publishRendererState('runtime-status', {
+  kind: 'snapshot',
+  payload: { status: 'ready', jobs: 0 }
+})
+
+// 状态变化时发布 delta；不要用定时轮询制造变化。
+await this.publishRendererState('runtime-status', {
+  kind: 'delta',
+  payload: { jobs: 1 }
+})
+```
+
+签名为 `registerRendererStateChannel(channel: string): Promise<void>` 与 `publishRendererState(channel: string, update: RendererStateUpdate): Promise<void>`。payload 必须是 JSON object，序列化后最多 **64 KiB**。Host 保留最新状态并为 Provider epoch 内的发布分配递增 revision。Provider 重启产生新 epoch；delta 不能跨 epoch 拼接。
+
+wire 只携带 channel 与 update。插件 UUID 由后端进程身份推导，不能由插件伪造。Provider 沿用当前 `pluginApi` permission rule，必须与 capability registry 和对应测试一致。session 关闭时 Host 自动清理 renderer subscriptions。
+
 ## 入口类
 
 推荐后端默认导出继承 `FlexPluginBase` 的类：

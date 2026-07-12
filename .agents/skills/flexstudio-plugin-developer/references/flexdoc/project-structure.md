@@ -164,3 +164,6 @@ workflow 必须固定到官方 workflow 的版本 tag，不能使用 `@main`。
 - 复制 manifest、locales、assets 等运行时文件。
 
 `plugin-v2 pack` 会把 dist 目录打包为 `.flexplugin`。非 native 插件默认生成 universal 包；native 插件必须指定平台。
+# Renderer State Channel 的代码位置
+
+同插件 UI retained state 的 channel 常量与 JSON payload type 建议放在 `src/shared/`，供 `src/backend/index.ts` 的 `registerRendererStateChannel()` / `publishRendererState()` 和 `src/frontend/*.vue` 的 `subscribeRendererState()` 共用。组件负责 mount/unmount 订阅清理；不要新增 polling worker、长 RPC 或全局 bus 文件。

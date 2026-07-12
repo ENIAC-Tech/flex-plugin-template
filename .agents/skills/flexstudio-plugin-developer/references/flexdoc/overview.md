@@ -50,6 +50,16 @@ Host API 不是自由调用接口。每次调用都会经过 Capability Registry
 
 当 Consumer 需要持续接收直接依赖 Provider 的最新状态时，使用 Dependency State Channel。它由主进程保留最新状态、控制 replay/ACK/背压与 Provider 生命周期；不要把这类私有依赖状态发布到全局事件总线。State Channel 仍复用 Consumer 的 `pluginApi` 权限，不新增 manifest 字段，详见 [插件依赖 API](./dependency-api.md#dependency-state-channel)。
 
+同一插件的后端需要向自己的 Unit View、编辑器或配置页持续推送状态时，使用 **Renderer State Channel**。后端通过 `registerRendererStateChannel()` 注册、`publishRendererState()` 发布 snapshot/delta，前端通过 `subscribeRendererState()` 订阅并请求 retained replay。Host 从 iframe session 推导插件 UUID 与 session identity，renderer 不得也无需传入这些身份。此通道仅限同一插件，不是跨插件或全局事件总线；完整契约见 [前端桥接](./frontend-bridge.md#renderer-state-channel)。
+
+| 需求 | 应选机制 |
+|---|---|
+| 持续的直接依赖状态 | Dependency State Channel |
+| 持续的同插件 UI 状态 | Renderer State Channel |
+| 跨插件一次性命令/查询 | dependency API |
+| 同插件 UI 一次性命令/查询 | backend RPC |
+| 广播无 retained 语义的 Host 事件 | global bus；不得用于 retained state |
+
 ### 项目中的插件依赖快照
 
 项目不会维护一份全局插件清单。每个 preset 会维护自己的 `pluginDependencies` 快照，记录该 preset 中正式 Unit 使用到的插件 UUID、版本、市场 listing id、Unit 数量和更新时间。项目打开时只汇总各 preset 的快照，不再遍历所有 Unit 重新推导依赖。

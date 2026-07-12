@@ -10,6 +10,18 @@
 - payload JSON/64 KiB 错误：payload 根必须是 plain object，不能包含 Date、Map、Set、BigInt、函数、循环引用或非有限数字。
 - revision 不连续或 `resyncRequired`：清除 Consumer 本地缓存，使用事件携带的完整 snapshot 覆盖；收到更高 `providerEpoch` 时同样清除旧状态。
 
+## Renderer State Channel
+
+- **unknown channel**：确认后端已在 `await super.onLoad(ctx)` 后调用 `registerRendererStateChannel()`，且前后端 channel 字符串完全一致。
+- **missing permission**：Provider 必须满足当前 `pluginApi` permission rule；检查 manifest、capability registry 与 Host 测试是否一致，不要发明新 permission。
+- **payload too large**：每个 snapshot/delta 必须是 JSON object，序列化后不超过 64 KiB；缩小 payload，不要拆成轮询 RPC。
+- **stale revision**：忽略同 epoch 中小于等于当前 revision 的事件；revision gap 清空缓存并等待 snapshot。
+- **no replay**：订阅时传 `{ replayLatest: true }`，并确认 Provider 已发布完整 snapshot。只发布 delta 不能建立初始缓存。
+- **unavailable**：清空 UI 缓存并展示不可用。Provider 恢复后的更高 epoch 必须等待新 snapshot，不能沿用旧值。
+- **handler errors**：handler 串行运行且无论成功/失败都会 ACK。记录异常并保持 handler 快速；Host 可能设置 `resyncRequired`。
+- **forgotten unsubscribe**：Vue unmount 主动调用订阅返回的 async unsubscribe。Host 会在 iframe session 结束时自动清理，但不能代替组件清理。
+- **身份参数**：renderer 不提交 plugin UUID 或 session ID；Host 从 iframe session 推导。若示例要求这些参数，说明 API 名称或示例已过时。
+
 ## CLI 无法连接 FlexStudio
 
 现象：

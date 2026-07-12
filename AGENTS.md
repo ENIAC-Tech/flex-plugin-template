@@ -19,4 +19,5 @@ For new plugin work:
 - Only add `secrets`, `oauth`, or `jobs` permissions when the plugin really uses those namespaces.
 - If the plugin accesses internet or LAN services, set `requiresNetwork: true`.
 - Native or system automation business logic belongs in plugin code or native helpers; FlexStudio core only provides lifecycle, permissions, runtime APIs, and marketplace metadata.
+- Choose **Dependency State Channel** for ongoing dependency state and **Renderer State Channel** for ongoing same-plugin UI state. Use a dependency API or backend RPC only for one-shot commands/queries. Never use intervals, long-polling, or a global bus for retained state.
 - For plugin frontend work, follow `.agents/skills/flexstudio-plugin-developer/references/flexdoc/ui-ux-guidelines.md`: keep the UI consistent with FlexStudio, use Vuetify 3 components and matching variants, default to FlexStudio primary blue unless the plugin has a clear app accent, and avoid decorative prose or nested containers.

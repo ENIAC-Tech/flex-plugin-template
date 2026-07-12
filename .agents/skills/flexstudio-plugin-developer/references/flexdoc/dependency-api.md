@@ -4,6 +4,8 @@
 
 ## Dependency State Channel
 
+> 选择边界：Dependency State Channel 面向声明过的直接依赖；Renderer State Channel 面向 Provider 自己的 renderer session。二者都有 retained snapshot/delta 语义，但授权和 wire identity 不同。
+
 当依赖插件需要持续发布“最新状态”而不是单次请求/响应时，使用由宿主治理的 State Channel。它不是全局事件总线：Consumer 必须在 manifest 中声明 Provider 为直接依赖，并声明现有的 `pluginApi` 权限；Provider 不需要新权限或 manifest 字段。
 
 Provider 在 `onLoad()` 中注册稳定、全小写的 channel 名称，再发布完整 snapshot 或 RFC 7396 Merge Patch delta：
@@ -47,6 +49,18 @@ plugin-a -> plugin-b -> plugin-c
 不适合的场景：
 
 - 同一插件前端调用自己的后端：使用 `backendRpc()` 和 `registerRendererRpc()`。
+
+## 状态与调用机制对照
+
+| 机制 | 生产者 → 消费者 | 生命周期 | 授权 | 适用场景 |
+|---|---|---|---|---|
+| Dependency State Channel | Provider 后端 → 直接依赖后端 | retained replay、epoch/revision、ACK | Consumer 的 `pluginApi` + manifest 直接依赖 | 持续依赖状态 |
+| Renderer State Channel | 插件后端 → 同插件 iframe | retained replay、epoch/revision、ACK | Provider 当前 `pluginApi` permission rule；Host 绑定 session | 持续同插件 UI 状态 |
+| dependency API | Consumer 后端 → Provider 后端 | 一次请求/响应 | `pluginApi` + 直接依赖 | 一次性跨插件命令/查询 |
+| backend RPC | 同插件 iframe → 后端 | 一次请求/响应 | Host 隔离的同插件 session | 一次性 UI 命令/查询 |
+| global bus | Host topic 广播 | 非 retained | topic/capability 规则 | Host 事件；不得代替 retained state |
+
+不要用 interval、long-polling、重复 RPC read 或 global bus 模拟 retained state。
 - 松散广播或订阅事件：使用事件总线。
 - 调用 FlexStudio 宿主能力：直接使用对应 Host API。
 

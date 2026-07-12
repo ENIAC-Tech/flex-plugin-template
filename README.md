@@ -91,6 +91,17 @@ Use the Dependency State Channel when a plugin needs to publish retained state t
 
 Treat `resyncRequired` as a full local-cache replacement, and discard local state when `providerEpoch` increases. See the bundled `dependency-api.md` before adding this capability.
 
+## Choosing a State or Call API
+
+Use the narrowest transport that matches the lifetime and audience of the data:
+
+- Ongoing state owned by another declared plugin dependency: **Dependency State Channel**.
+- Ongoing state shared by this plugin's backend and its own UI: **Renderer State Channel** with retained replay and mount/unmount cleanup.
+- One-shot commands or queries: a dependency API for another plugin, or **backend RPC** for this plugin's UI.
+- Never use intervals, long-polling, or a global bus to move retained state. Do not repeatedly read the same state through backend RPC.
+
+The `runtime-status` example in `src/backend/index.ts` publishes an initial snapshot and a later delta. `src/frontend/UnitView.vue` subscribes with `{ replayLatest: true }` and unsubscribes when Vue unmounts.
+
 ## Project Structure
 
 ```text

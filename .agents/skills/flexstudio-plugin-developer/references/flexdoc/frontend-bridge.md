@@ -139,6 +139,7 @@ async function openSettings() {
 | `unitData` | 当前 Unit 数据。配置页为空对象。 |
 | `setUnitData(data)` | 更新当前 Unit 数据。 |
 | `backendRpc(method, params)` | 调用插件后端注册的 RPC。 |
+| `subscribeRendererState(channel, handler, options)` | 订阅同插件后端的 retained Renderer State Channel。 |
 | `showSnackbarMessage(options)` | 在 FlexStudio 主 UI 中显示 snackbar。 |
 | `openConfigPage()` | 请求 FlexStudio 打开当前插件的设置页。宿主会按当前 iframe 上下文解析插件 UUID，插件不能用它打开其它插件的设置页。 |
 | `bridge` | 原始 bridge 实例。 |
@@ -280,6 +281,52 @@ bridge.logger.error(new Error('failed'))
 
 ```ts
 const result = await bridge.backendRpc('lookupUser', ['42'])
+
+## Renderer State Channel
+
+```ts
+subscribeRendererState<T extends Record<string, RendererStateJson>>(
+  channel: string,
+  handler: (event: RendererStateEnvelope<T>) => void | Promise<void>,
+  options?: { replayLatest?: boolean }
+): Promise<() => Promise<void>>
+```
+
+Host 从已认证 iframe session 推导 plugin UUID/session identity；renderer 只提供 channel、handler 与 options，绝不能提交 UUID 或 session ID。每个 subscription 的 handler 串行执行，成功或抛错后 bridge 都会 ACK，使 Host 可以继续队列或触发 resync。页面/session 销毁时 Host 自动清理，但组件仍应主动 unsubscribe。
+
+Vue 示例（无 polling）：
+
+```ts
+import { onMounted, onUnmounted, ref } from 'vue'
+import { useFlexBridge } from '@flexsdk/runtime/vue'
+
+const { bridge } = useFlexBridge()
+const state = ref<Record<string, unknown> | null>(null)
+let epoch = -1
+let revision = -1
+let unsubscribe: (() => Promise<void>) | undefined
+
+onMounted(async () => {
+  unsubscribe = await bridge.value!.subscribeRendererState(
+    'runtime-status',
+    async (event) => {
+      if (event.kind === 'unavailable' || event.resyncRequired) state.value = null
+      else if (event.kind === 'available') return
+      else if (event.kind === 'snapshot') state.value = { ...event.payload }
+      else if (event.providerEpoch === epoch && event.revision === revision + 1 && state.value) {
+        state.value = { ...state.value, ...event.payload }
+      } else state.value = null // 等待 replay/resync snapshot
+      epoch = event.providerEpoch
+      revision = event.revision
+    },
+    { replayLatest: true }
+  )
+})
+
+onUnmounted(() => { if (unsubscribe) void unsubscribe() })
+```
+
+`available`/`unavailable` 表示 Provider 可用性。新 epoch、revision gap 或 `resyncRequired` 都应丢弃本地缓存并等待完整 snapshot；旧 revision 必须忽略。单个 JSON-object payload 上限为 64 KiB。
 ```
 
 后端需要先注册同名方法：

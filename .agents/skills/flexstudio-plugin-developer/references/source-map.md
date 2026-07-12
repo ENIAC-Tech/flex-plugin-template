@@ -41,6 +41,7 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `src/main/plugin/capability-registry.ts`: permission and capability registry.
 - `src/main/plugin/definition-registry.ts`: active definitions.
 - `src/main/plugin/dependency-state-registry.ts`: direct-dependency retained state, replay, ACK queue, resync, rate limits, and Provider lifecycle.
+- `src/main/plugin/renderer-state-registry.ts`: same-plugin renderer retained state, replay, ACK queue, resync, payload limits, and session cleanup.
 - `src/main/plugin/plugin-value-label-atlas.ts`: `value-label` atlas generation and extended-data reconciliation.
 - `src/main/plugin/plugin-runtime-label-device-data.ts`: device export metadata for `value-label` and `label`.
 - `src/common/button-group-state.ts`: host-side Button Group normalization, click application, appearance sync, and runtime state helpers.

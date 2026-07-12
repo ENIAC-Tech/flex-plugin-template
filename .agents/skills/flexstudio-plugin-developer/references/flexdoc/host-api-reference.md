@@ -33,6 +33,10 @@ await this.hostApi.ui.showSnackbarMessage({ message: 'Done', type: 'success' })
 
 `hostApi.plugin.registerDependencyStateChannel()`、`publishDependencyState()`、`subscribeDependencyState()` 和 `unsubscribeDependencyState()` 构成 Dependency State Channel transport。只有 `subscribeDependencyState()` 需要 Consumer 已声明的 `pluginApi` 权限；Provider 注册和发布状态不需要新增权限。参数只传递 channel、JSON payload、subscription ID 和 options，handler 永远由 Consumer SDK 保留在本地进程。完整契约见 [插件依赖 API](./dependency-api.md#dependency-state-channel)。
 
+`hostApi.plugin.registerRendererStateChannel(channel)` 与 `publishRendererState(channel, update)` 构成同插件 Renderer State Channel 的 Provider transport；前端桥接公开 `subscribeRendererState(channel, handler, { replayLatest })`。Provider 使用当前 `pluginApi` permission rule，capability registry 与契约测试必须使用相同规则。订阅只允许当前插件已认证的 renderer session；wire 上 renderer 不提供 plugin UUID 或 session identity。
+
+Host 限制 payload 为 JSON object 且不超过 64 KiB，保留最新 snapshot/delta 状态，生成 epoch/revision，并按 subscription 串行投递。handler 完成或失败都会 ACK；失败、队列缺口或超限可要求 resync。iframe session 结束时 subscription 自动清理。
+
 ## File API
 
 权限：`file`

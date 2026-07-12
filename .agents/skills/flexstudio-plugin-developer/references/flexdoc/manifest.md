@@ -65,6 +65,8 @@
 
 Dependency State Channel 不新增 manifest 字段或 permission enum。订阅其他插件状态的 Consumer 复用 `pluginApi`，并必须在 `dependencies` 中声明 Provider 为直接依赖；只注册或发布状态的 Provider 不需要新增权限。
 
+Renderer State Channel 同样不新增 manifest 字段或 permission enum。Provider 注册/发布沿用当前 `pluginApi` permission rule；订阅仅授权给同一插件的 Host 认证 renderer session，因此无需也不得在 manifest、订阅参数或 payload 中声明 plugin UUID/session identity。它不要求 `dependencies`。
+
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `schemaVersion` | `'1.0'` | 是 | manifest schema 版本。当前使用 `1.0`。 |

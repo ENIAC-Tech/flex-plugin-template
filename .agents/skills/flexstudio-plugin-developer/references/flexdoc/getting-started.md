@@ -160,6 +160,8 @@ async function saveValue(value: string) {
 
 async function callBackend() {
   return backendRpc('doSomething', { id: 1 })
+
+持续状态不要重复调用这个 RPC。依赖插件的持续状态选择 Dependency State Channel；同插件后端到 UI 的持续状态选择 Renderer State Channel，并在 Vue mount 时使用 `{ replayLatest: true }` 订阅、unmount 时 unsubscribe。一次性命令/查询才使用 dependency API 或 backend RPC；不要使用 intervals、long-polling 或 global bus 保存 retained state。
 }
 ```
 
