@@ -498,7 +498,7 @@ Topic 约定：
 
 ```ts
 type UnitDeviceEventType = 'load' | 'unload' | 'touch' | 'pressed' | 'released' | 'changed'
-type DeviceUnitRuntimeStatus = 'enabled' | 'disabled' | 'warning'
+type DeviceUnitRuntimeStatus = 'enabled' | 'disabled' | 'warning' | 'loading'
 
 interface PluginUnitApi {
   on(typeId: string, event: UnitDeviceEventType, options?: RegisterEventOptions): Promise<void>
@@ -847,13 +847,30 @@ interface PluginElectronScreenApi {
 - `enabled`：默认状态，清除额外视觉状态并恢复交互。
 - `disabled`：设备端显示黑色 mask 和 `mdi-cancel`，并阻断该 Unit 的设备端交互。
 - `warning`：设备端左上角显示黄色 `mdi-alert-circle` 角标，不阻断交互。
+- `loading`：设备端显示居中的 loading spinner，并阻断该 Unit 的设备交互；适合短时异步动作。动作完成后插件必须显式恢复为 `enabled`、`warning` 或 `disabled`。
 
 ```ts
-await this.hostApi.unit.setRuntimeStatus(
-  event.payload.serialNumber,
-  event.payload.uuid,
-  'disabled',
-)
+const { serialNumber } = event.context
+const unitUuid = event.payload.uuid
+
+await this.hostApi.unit.setRuntimeStatus(serialNumber, unitUuid, 'loading')
+let finalStatus: DeviceUnitRuntimeStatus = 'warning'
+try {
+  await runAction()
+  finalStatus = 'enabled'
+  void this.hostApi.device.showSnackbarMessage(serialNumber, {
+    message: 'Action completed',
+    type: 'success',
+  }).catch(() => undefined)
+} catch (error) {
+  void this.hostApi.device.showSnackbarMessage(serialNumber, {
+    message: 'Action failed',
+    type: 'error',
+  }).catch(() => undefined)
+  throw error
+} finally {
+  await this.hostApi.unit.setRuntimeStatus(serialNumber, unitUuid, finalStatus)
+}
 ```
 
 插件只能设置自己的已加载 plugin Unit；不能设置内置 Unit、其它插件的 Unit，或当前未加载的 Unit。FlexStudio 主程序内部 API 可设置当前映射项目中的任意 Unit。

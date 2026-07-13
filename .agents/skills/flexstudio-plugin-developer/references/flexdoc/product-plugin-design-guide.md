@@ -87,6 +87,8 @@ Snackbar 是显式动作的附属反馈，不是动作结果本身。通知 API 
 
 断线、权限缺失、认证失败、超时、目标缺失和状态过期都应有稳定、可恢复的状态。未连接或状态陈旧的 Unit 进入 warning 或 disabled，同时保留其绑定和解释；不要崩溃、循环重启或静默执行其他目标。
 
+短时异步动作执行期间，Unit 应进入 `loading` 运行时状态以显示居中 spinner 并阻断重复设备交互；动作结束后必须显式恢复为 `enabled`、`warning` 或 `disabled`。显式设备动作可以在发起设备上显示结果 snackbar，但通知失败不得覆盖真实动作结果。
+
 ## 界面、图标与本地化
 
 配置页与功能编辑器使用 Vuetify 3 的紧凑 `solo-filled` 输入、`tonal` 按钮与小型状态 chip；默认使用 FlexStudio `primary`，明确产品品牌仅作局部 accent。避免 hero、营销式说明、重复标题、卡片套卡片和长期占据页面的诊断面板。

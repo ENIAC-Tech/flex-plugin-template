@@ -469,7 +469,32 @@ const activeButtonIds = await this.hostApi.unit.getButtonGroupState(serialNumber
 
 `onSliderUnitChanged()` 接收宿主规范化后的 slider payload，包含 `value`、`phase`、`min`、`max`、`step`、`format`、`displayText`、`data` 和 `serialNumber`。
 
-`setUnitRuntimeStatus(serialNumber, unitUuid, status)` 可设置 `enabled`、`disabled`、`warning` 三种设备端运行时状态。`disabled` 会在设备端阻断交互，`warning` 只显示告警角标。`cycled` 的建议流程是：监听 `pressed` 或 `touch` -> 执行业务动作 -> 成功后调用 `setUnitFunction(serialNumber, unitUuid, functionId)`。宿主和设备不会自动切换 plugin `cycled` 状态。
+`setUnitRuntimeStatus(serialNumber, unitUuid, status)` 可设置 `enabled`、`disabled`、`warning`、`loading` 四种设备端运行时状态。`disabled` 会在设备端阻断交互，`warning` 只显示告警角标。
+
+- `loading`：设备端显示居中的 loading spinner，并阻断该 Unit 的设备交互；适合短时异步动作。动作完成后插件必须显式恢复为 `enabled`、`warning` 或 `disabled`。
+
+短时异步动作应先进入 `loading`，再使用 `try/finally` 保证状态收敛；显式设备动作的结果可以通过 `hostApi.device.showSnackbarMessage()` 告知发起设备。`cycled` 的建议流程是：监听 `pressed` 或 `touch` -> 执行业务动作 -> 成功后调用 `setUnitFunction(serialNumber, unitUuid, functionId)`。宿主和设备不会自动切换 plugin `cycled` 状态。
+
+```ts
+await this.setUnitRuntimeStatus(serialNumber, unitUuid, 'loading')
+let finalStatus: 'enabled' | 'warning' = 'warning'
+try {
+  await runAction()
+  finalStatus = 'enabled'
+  void this.hostApi.device.showSnackbarMessage(serialNumber, {
+    message: 'Action completed',
+    type: 'success',
+  }).catch(() => undefined)
+} catch (error) {
+  void this.hostApi.device.showSnackbarMessage(serialNumber, {
+    message: 'Action failed',
+    type: 'error',
+  }).catch(() => undefined)
+  throw error
+} finally {
+  await this.setUnitRuntimeStatus(serialNumber, unitUuid, finalStatus)
+}
+```
 
 `button-group` 的建议流程是：监听 `changed` -> 根据 `activeButtonIds` 执行业务动作；需要由插件主动恢复或切换状态时，调用 `hostApi.unit.setButtonGroupState(serialNumber, unitUuid, activeButtonIds)`。SDK 会通过 Host API 校验按钮 ID、单选/多选和 mandatory 约束。
 <!-- plugin-cycled-slider:end -->
