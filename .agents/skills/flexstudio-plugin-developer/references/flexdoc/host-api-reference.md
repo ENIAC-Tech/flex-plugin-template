@@ -850,7 +850,10 @@ interface PluginElectronScreenApi {
 - `loading`：设备端显示居中的 loading spinner，并阻断该 Unit 的设备交互；适合短时异步动作。动作完成后插件必须显式恢复为 `enabled`、`warning` 或 `disabled`。
 
 ```ts
-const { serialNumber } = event.context
+const serialNumber = event.payload.serialNumber?.trim()
+if (!serialNumber) {
+  throw new Error('Device serial number is required')
+}
 const unitUuid = event.payload.uuid
 
 await this.hostApi.unit.setRuntimeStatus(serialNumber, unitUuid, 'loading')
