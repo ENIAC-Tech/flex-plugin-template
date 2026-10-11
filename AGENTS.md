@@ -23,3 +23,12 @@ For new plugin work:
 - Native or system automation business logic belongs in plugin code or native helpers; FlexStudio core only provides lifecycle, permissions, runtime APIs, and marketplace metadata.
 - Choose **Dependency State Channel** for ongoing dependency state and **Renderer State Channel** for ongoing same-plugin UI state. Use a dependency API or backend RPC only for one-shot commands/queries. Never use intervals, long-polling, or a global bus for retained state.
 - For plugin frontend work, follow `.agents/skills/flexstudio-plugin-developer/references/flexdoc/ui-ux-guidelines.md`: keep the UI consistent with FlexStudio, use Vuetify 3 components and matching variants, default to FlexStudio primary blue unless the plugin has a clear app accent, and avoid decorative prose or nested containers.
+
+## Portable plugin delivery
+
+Runtime, install, build, and packaging inputs must come from tracked files, locked
+dependencies, or an explicit documented generation step before consumption.
+Never use `work/`, temp/cache/ref directories, or developer-specific paths as implicit
+required inputs. Tests generate inputs or use tracked fixtures, create output parents,
+and consume outputs from the current run. Verify delivery changes from a clean checkout
+with empty temporary directories; include required resources and notices in the package.
