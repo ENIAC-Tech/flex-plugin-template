@@ -17,7 +17,7 @@
   },
   "devices": ["Flow2Pro", "FlexbarV2", "FlexBoardV1", "MassX"],
   "requiredCapabilities": [],
-  "permissions": ["store", "logger", "device", "definitions", "bus", "unit", "ui"],
+  "permissions": ["store", "logger", "device", "definitions", "bus", "unit", "ui", "pluginApi"],
   "dependencies": [],
   "hasConfigPage": true,
   "entry": {

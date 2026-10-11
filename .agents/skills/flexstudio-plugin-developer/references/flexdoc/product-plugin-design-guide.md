@@ -40,6 +40,8 @@ Unit 数据应使用按 Unit 类型和模式区分的闭合联合，并对允许
 
 `hasFunctionEditor` 是产品目录契约，不是纯 UI 细节。所有需要选择目标、模式或参数的 Unit 都必须在生成的 definitions 中声明编辑器；测试应从真实 definitions 断言该集合，而不是只直接挂载编辑器组件。
 
+危险或不可逆的 click 动作需要默认长按确认时，在 Unit definition 中声明宿主拥有的 `defaultActivation: { mode: 'hold', holdDurationMs }`。该默认值只应用于新建 Unit，用户之后可以在宿主中覆盖；插件仍只处理 canonical activation。不要在插件中监听 pressed/released、自行启动长按计时器，也不要把宿主 activation 配置混入业务 `defaultData`。
+
 `cycled` Unit 可能投影的每个 function ID 都必须形成闭合集合，并在 definition 与全部 locale 中声明。外部系统返回开放枚举时，应归一化到已声明状态或稳定的 `unknown`，不能把任意外部字符串直接当 function ID。
 
 ## 用一个状态存储完成双向同步

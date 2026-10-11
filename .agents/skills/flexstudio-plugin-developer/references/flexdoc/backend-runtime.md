@@ -24,7 +24,7 @@ await this.publishRendererState('runtime-status', {
 })
 ```
 
-签名为 `registerRendererStateChannel(channel: string): Promise<void>` 与 `publishRendererState(channel: string, update: RendererStateUpdate): Promise<void>`。payload 必须是 JSON object，序列化后最多 **64 KiB**。Host 保留最新状态并为 Provider epoch 内的发布分配递增 revision。Provider 重启产生新 epoch；delta 不能跨 epoch 拼接。
+签名为 `registerRendererStateChannel(channel: string): Promise<void>` 与 `publishRendererState(channel: string, update: RendererStateUpdate): Promise<void>`。Provider 输入可以是完整 snapshot 或 RFC 7396 Merge Patch delta；输入与合并后 retained state 的 JSON 都最多 **64 KiB**。Host 向 iframe 统一投递完整 `snapshot`，前端直接替换缓存。发布和 `unavailable` 会递增 revision，`available` 使用 revision 0。Provider 重启产生新 epoch；消费端先处理可用性事件，再进行数据 revision 去重。
 
 wire 只携带 channel 与 update。插件 UUID 由后端进程身份推导，不能由插件伪造。Provider 沿用当前 `pluginApi` permission rule，必须与 capability registry 和对应测试一致。session 关闭时 Host 自动清理 renderer subscriptions。
 
@@ -89,7 +89,7 @@ abstract getDefinitions(): Promise<PluginDefinitionsPayload>
 
 1. 先调用 `await super.onLoad(ctx)`。
 2. 尽早注册 Renderer RPC、依赖 API、事件订阅和必要的清理逻辑。
-3. 让 `getDefinitions()` 返回稳定的基础定义，或在确实需要时尽早 `registerDefinitions()`。
+3. 让 `getDefinitions()` 返回稳定的基础定义。宿主启动时必定拉取这个方法；`registerDefinitions()` 只用于运行时替换定义。
 4. 把远端同步、目录扫描、首轮索引、全量缓存预热等慢任务放到后台。
 
 尤其是带网络访问的插件，不要在 `onLoad()` 里等待远端登录、拉全量资源、扫完整目录或完成全量 provider 同步。更好的模式是：
@@ -107,12 +107,12 @@ abstract getDefinitions(): Promise<PluginDefinitionsPayload>
 如果插件没有主动关闭，FlexStudio 也会在插件进程停止时强制关闭该插件剩余的 sockets，包括插件卸载、禁用、重载、崩溃或进程退出等场景。
 ## Unit 迁移 Hook
 
-插件更新后，旧项目里已经添加的插件 Unit 不会重新用 `defaultData` 创建。FlexStudio 会扫描当前项目 preset 中的旧版本插件 Unit，并在插件后端启用后调用可选的 `migrateUnit()` 实例方法。插件未实现该方法时视为 no-op，宿主仍会把 Unit 的 `plugin.pluginVersion` 更新到目标版本。
+插件更新后，旧项目里已经添加的插件 Unit 不会重新用 `defaultData` 创建。FlexStudio 会扫描当前 Project 中的旧版本插件 Unit，并在插件后端启用后调用可选的 `migrateUnit()` 实例方法。插件未实现该方法时视为 no-op，宿主仍会把 Unit 的 `plugin.pluginVersion` 更新到目标版本。
 
 触发场景：
 
 - 用户在插件市场更新插件后，立即迁移当前项目中该插件的旧版本 Unit。
-- 打开项目时，preset 的 `pluginDependencies` 快照显示本机已安装插件版本高于项目内 Unit 版本。
+- 打开项目时，Project 的插件依赖缓存显示本机已安装插件版本高于项目内 Unit 版本。迁移依据实际 Unit 与当前 Definitions；preset 缓存不是 Project 的权威数据契约。
 
 建议签名：
 

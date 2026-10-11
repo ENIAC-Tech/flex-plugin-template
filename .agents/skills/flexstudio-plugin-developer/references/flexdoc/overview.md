@@ -81,7 +81,7 @@ Host API 不是自由调用接口。每次调用都会经过 Capability Registry
 1. FlexStudio 注册 `plugin-asset://` 协议和插件相关 IPC。
 2. 主进程初始化插件管理器，读取已安装插件仓库。
 3. 插件管理器加载启用状态的插件，启动插件后端进程。
-4. 插件后端执行 `onLoad()`，并通过 `getDefinitions()` 或 `registerDefinitions()` 提供 Library 与 Unit 定义。
+4. 插件后端执行 `onLoad()`，随后宿主强制调用 `getDefinitions()` 拉取 Library 与 Unit 定义；运行时的 `registerDefinitions()` 不能替代此启动步骤。
 5. 渲染进程查询当前可用的插件 Unit，并在资源面板、编辑器和运行视图中展示。
 6. 用户打开插件页面时，渲染进程创建 iframe 并建立桥接通道。
 7. 插件页面通过前端桥接读取或更新 Unit 数据，必要时通过 `backendRpc()` 调用插件后端。

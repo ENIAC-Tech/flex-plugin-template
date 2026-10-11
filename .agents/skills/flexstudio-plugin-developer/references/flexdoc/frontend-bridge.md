@@ -311,22 +311,25 @@ onMounted(async () => {
   unsubscribe = await bridge.value!.subscribeRendererState(
     'runtime-status',
     async (event) => {
-      // Ignore stale envelopes before mutating state or cursors.
       if (event.providerEpoch < epoch) return
-      if (event.providerEpoch === epoch && event.revision <= revision) return
-
-      const newEpoch = event.providerEpoch > epoch
-      const contiguous = !newEpoch && event.revision === revision + 1
-      if (newEpoch) state.value = null
-
-      if (event.kind === 'unavailable') state.value = null
-      else if (event.kind === 'available') { /* wait for a complete snapshot */ }
-      else if (event.kind === 'snapshot') state.value = { ...event.payload }
+      if (event.providerEpoch > epoch) {
+        state.value = null
+        epoch = event.providerEpoch
+        revision = -1
+      }
+      // Lifecycle messages do not depend on a new data revision.
+      if (event.kind === 'available') return
+      if (event.kind === 'unavailable') {
+        if (event.revision < revision) return
+        state.value = null
+        revision = event.revision
+        return
+      }
+      if (event.revision <= revision) return
+      // Host materializes provider patches into authoritative snapshots.
+      if (event.kind === 'snapshot') state.value = { ...event.payload }
       else if (event.resyncRequired) state.value = null
-      else if (event.kind === 'delta' && contiguous && state.value) {
-        state.value = { ...state.value, ...event.payload }
-      } else state.value = null // 等待 replay/resync snapshot
-      epoch = event.providerEpoch
+      else state.value = null
       revision = event.revision
     },
     { replayLatest: true }
@@ -336,7 +339,7 @@ onMounted(async () => {
 onUnmounted(() => { if (unsubscribe) void unsubscribe() })
 ```
 
-`available`/`unavailable` 表示 Provider 可用性。旧 epoch/revision 必须先忽略。新 epoch 或 revision gap 会丢弃本地缓存；Host 发出的 `kind: 'snapshot', resyncRequired: true` 是权威恢复状态，应清空后立即应用该 snapshot。只有非 snapshot 的 `resyncRequired` 才清空并等待完整 snapshot。单个 JSON-object payload 上限为 64 KiB。
+`available`/`unavailable` 表示 Provider 可用性。旧 epoch 必须先忽略。可用性事件先于数据 revision 去重处理。新 epoch 会丢弃本地缓存；完整 snapshot 可直接跨越 revision gap 替换本地状态。Provider 发布的 delta 是输入 Merge Patch，Host 合并后统一发送完整 snapshot；Host 发出的 `kind: 'snapshot', resyncRequired: true` 是权威恢复状态，应清空后立即应用该 snapshot。只有非 snapshot 的 `resyncRequired` 才清空并等待完整 snapshot。输入与合并后的 retained state 上限均为 64 KiB。
 
 后端需要先注册同名方法：
 
@@ -475,3 +478,5 @@ await bridge.setSelectedFunctionData(functionId, data)
 
 `cycled` 的 `name` 和 `appearance` 仍由宿主已有编辑器管理。`button-group` 的按钮名称、显示模式、颜色、激活态和外观同步也由宿主编辑器管理；插件函数编辑器只负责当前函数或按钮的业务数据。
 <!-- plugin-cycled-slider:end -->
+
+前端桥接请求超时为 20 秒，覆盖宿主 backend RPC 的 15 秒等待窗口。超时不会自动取消已经执行的后端操作；较长工作应以 job 启动并通过 State Channel 汇报状态。

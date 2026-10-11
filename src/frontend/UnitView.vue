@@ -19,23 +19,24 @@ watch(isReady, async (ready) => {
   unsubscribeRuntime = await bridge.value.subscribeRendererState(
     'runtime-status',
     (event: RendererStateEnvelope) => {
-      // Reject stale envelopes before changing either the snapshot or cursors.
       if (event.providerEpoch < runtimeEpoch) return;
-      if (event.providerEpoch === runtimeEpoch && event.revision <= runtimeRevision) return;
-
-      const newEpoch = event.providerEpoch > runtimeEpoch;
-      const contiguous = !newEpoch && event.revision === runtimeRevision + 1;
-      if (newEpoch) runtimeStatus.value = null;
-
-      if (event.kind === 'unavailable') runtimeStatus.value = null;
-      else if (event.kind === 'available') { /* wait for a complete snapshot */ }
-      else if (event.kind === 'snapshot') runtimeStatus.value = { ...event.payload };
-      else if (event.resyncRequired) runtimeStatus.value = null;
-      else if (event.kind === 'delta' && contiguous && runtimeStatus.value) {
-        runtimeStatus.value = { ...runtimeStatus.value, ...event.payload };
-      } else runtimeStatus.value = null; // gap/new epoch/missing snapshot: wait for replay/resync
-
-      runtimeEpoch = event.providerEpoch;
+      if (event.providerEpoch > runtimeEpoch) {
+        runtimeStatus.value = null;
+        runtimeEpoch = event.providerEpoch;
+        runtimeRevision = -1;
+      }
+      // Availability is processed before data revision deduplication.
+      if (event.kind === 'available') return;
+      if (event.kind === 'unavailable') {
+        if (event.revision < runtimeRevision) return;
+        runtimeStatus.value = null;
+        runtimeRevision = event.revision;
+        return;
+      }
+      if (event.revision <= runtimeRevision) return;
+      // Provider patches arrive as complete, authoritative host snapshots.
+      if (event.kind === 'snapshot') runtimeStatus.value = { ...event.payload };
+      else runtimeStatus.value = null;
       runtimeRevision = event.revision;
     },
     { replayLatest: true }

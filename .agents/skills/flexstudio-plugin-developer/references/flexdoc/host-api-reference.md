@@ -31,7 +31,7 @@ await this.hostApi.ui.showSnackbarMessage({ message: 'Done', type: 'success' })
 | `hostApi.device` | `device` | 连接设备配置和能力查询。 |
 | `hostApi.electron.*` | 对应 `electron.*` | 受限 Electron 能力。 |
 
-`hostApi.plugin.registerDependencyStateChannel()`、`publishDependencyState()`、`subscribeDependencyState()` 和 `unsubscribeDependencyState()` 构成 Dependency State Channel transport。只有 `subscribeDependencyState()` 需要 Consumer 已声明的 `pluginApi` 权限；Provider 注册和发布状态不需要新增权限。参数只传递 channel、JSON payload、subscription ID 和 options，handler 永远由 Consumer SDK 保留在本地进程。完整契约见 [插件依赖 API](./dependency-api.md#dependency-state-channel)。
+`hostApi.plugin.registerDependencyStateChannel()`、`publishDependencyState()`、`subscribeDependencyState()` 和 `unsubscribeDependencyState()` 构成 Dependency State Channel transport。Provider 注册、发布与 Consumer 订阅均需要各自 manifest 声明 `pluginApi`；unsubscribe 用于清理已有订阅，不要求额外权限。参数只传递 channel、JSON payload、subscription ID 和 options，handler 永远由 Consumer SDK 保留在本地进程。完整契约见 [插件依赖 API](./dependency-api.md#dependency-state-channel)。
 
 `hostApi.plugin.registerRendererStateChannel(channel)` 与 `publishRendererState(channel, update)` 构成同插件 Renderer State Channel 的 Provider transport；前端桥接公开 `subscribeRendererState(channel, handler, { replayLatest })`。Provider 使用当前 `pluginApi` permission rule，capability registry 与契约测试必须使用相同规则。订阅只允许当前插件已认证的 renderer session；wire 上 renderer 不提供 plugin UUID 或 session identity。
 
@@ -1036,3 +1036,5 @@ await this.hostApi.unit.setUnitIcon(
 
 未知 MDI 名称、空字符串、代理区 codepoint、越界 codepoint 会被拒绝。裸十六进制只有在落入 Unicode 私有区时才按 codepoint 解析，否则按未知 MDI 名称处理。
 <!-- plugin-cycled-slider:end -->
+
+OAuth loopback flow 默认等待 120 秒，`timeoutMs` 最大为 10 分钟。插件进程的 OAuth Host API 等待窗口使用同一上限并增加 5 秒用于宿主清理和 IPC 响应；普通 Host API 调用仍为 30 秒。前端不要等待完整授权过程的 backend RPC：启动后台任务后及时返回，再通过 Renderer State Channel 汇报授权结果。Brokered OAuth 仍属于设计提案，当前实现没有该 API。

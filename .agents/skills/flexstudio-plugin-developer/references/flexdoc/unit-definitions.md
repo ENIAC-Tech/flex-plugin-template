@@ -40,7 +40,7 @@ export default class DemoPlugin extends FlexPluginBase {
           categoryId: 'plugin',
           libraryUUID: library.libraryUUID,
           hasFunctionEditor: true,
-          hasAppearanceEditor: true,
+          hasAppearanceEditor: false,
           defaultData: {
             action: 'open-url',
             url: 'https://example.com',
@@ -65,7 +65,9 @@ export default class DemoPlugin extends FlexPluginBase {
 }
 ```
 
-`createDefaultLibrary()` 和 `createUnitTemplate()` 会填充常用默认值，包括 `plugin.pluginUUID`、`plugin.pluginVersion` 和 `plugin.unitId`。
+`createDefaultLibrary()` 和 `createUnitTemplate()` 会填充常用默认值，包括 `plugin.pluginUUID`、`plugin.pluginVersion` 和 `plugin.unitId`。helper 会保留 `interactionMode` 与 `defaultActivation`；`standard` 使用宿主外观编辑器，只有 `custom` 可以声明 `hasAppearanceEditor: true`。
+
+`builtinUnits` 的根节点必须是普通内置 Unit，不允许 `plugin`。容器子节点可以是插件 Unit，其 `pluginUUID`、`pluginVersion`、`unitId` 与 `type` 必须匹配同一 payload 中注册的 definition；`createBuiltinUnitTemplate()` 仅移除根节点元数据，保留子节点的插件归属。整棵 builtin 模板树的 UUID 必须唯一。
 
 ## Library Definition
 
@@ -109,6 +111,8 @@ interface PluginUnitDefinitionRuntime {
   name: string
   categoryId: string
   plugin: PluginUnit
+  interactionMode?: 'click' | 'continuous' | 'display'
+  defaultActivation?: PluginUnitDefaultActivationConfig
   icon?: string
   hasFunctionEditor?: boolean
   hasAppearanceEditor?: boolean
@@ -132,6 +136,8 @@ interface PluginUnitDefinitionRuntime {
 | `name` | Unit 显示名称。 |
 | `categoryId` | Unit 分类 ID。 |
 | `plugin` | 插件元数据，标记该 Unit 由哪个插件提供。 |
+| `interactionMode` | Unit 的宿主交互模式：`click`、`continuous` 或 `display`。 |
+| `defaultActivation` | 新建 click-capable Unit 的默认激活方式；用户之后仍可在宿主中覆盖。 |
 | `icon` | 可选图标。 |
 | `hasFunctionEditor` | 是否提供功能编辑器页面。 |
 | `hasAppearanceEditor` | 是否提供外观编辑器页面。 |
@@ -145,6 +151,46 @@ interface PluginUnitDefinitionRuntime {
 | `defaultData` | 创建 Unit 实例时的默认数据。 |
 | `platforms` | Unit 支持的平台，使用 `win32`、`darwin`、`linux`。 |
 | `libraryUUID` | Unit 所属 Library。省略时使用 payload 中第一个 Library。 |
+
+`defaultActivation` 的结构如下：
+
+```ts
+interface PluginUnitDefaultActivationConfig {
+  mode: 'tap' | 'hold'
+  holdDurationMs?: number
+}
+```
+
+接受的默认激活形式为 tap 的 `{ mode: 'tap' }`，以及 hold 的 `{ mode: 'hold' }` 或 `{ mode: 'hold', holdDurationMs }`。省略 `holdDurationMs` 时，宿主使用 800 毫秒；显式提供时，值必须在 300–3000 毫秒之间，并使用 100 毫秒步进。`defaultActivation` 只能用于可点击的 Unit；`standard` 和 `custom` Unit 需要同时声明 `interactionMode: 'click'`，`display` 和 `continuous` Unit 不能声明它。
+
+下面的定义让新建的 Start Commercial Unit 默认需要按住 800 毫秒确认：
+
+```ts
+{
+  unitId: 'start-commercial',
+  typeId: '@aspen/plugin/start-commercial',
+  name: { default: 'Start Commercial', translations: { zh: '开始广告' } },
+  categoryId: 'streaming',
+  icon: 'mdi-advertisements',
+  hasFunctionEditor: true,
+  hasAppearanceEditor: false,
+  hasView: false,
+  visibleInLibrary: true,
+  libraryUUID: '@aspen/plugin-twitch-creator-tools/creator-tools',
+  platforms: ['win32', 'darwin', 'linux'],
+  plugin: {
+    type: 'standard',
+    pluginUUID: '@aspen/plugin-twitch-creator-tools',
+    pluginVersion: '1.0.0',
+    unitId: 'start-commercial',
+  },
+  interactionMode: 'click',
+  defaultActivation: { mode: 'hold', holdDurationMs: 800 },
+  defaultData: { schemaVersion: 1, durationSeconds: 30 },
+}
+```
+
+这个默认值只在用户从 Library 新建 Unit 时写入 `unit.config.activation`，不会改写已有 Unit。创建后，用户可以在宿主的交互设置中改成 tap、调整长按时长或恢复其他受支持配置。插件必须只响应宿主发出的 canonical activation 事件；不要监听 raw pressed/released 并自行实现计时器，也不要把 activation 配置塞进 `defaultData`。
 
 ## Plugin Unit Metadata
 

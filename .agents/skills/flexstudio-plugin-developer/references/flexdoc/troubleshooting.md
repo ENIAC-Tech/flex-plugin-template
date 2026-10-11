@@ -4,7 +4,7 @@
 
 ## Dependency State Channel
 
-- `lacks permission 'pluginApi'`：Consumer 的 manifest 缺少 `pluginApi`；Provider 不需要因为发布状态而添加该权限。
+- `lacks permission 'pluginApi'`：Provider 注册/发布或 Consumer 订阅的 manifest 缺少 `pluginApi`；分别在使用这些方法的插件中声明权限。
 - `does not directly depend on`：Consumer 必须在 `dependencies` 中直接声明 Provider，传递依赖不允许订阅。
 - `channel ... is unavailable`：Provider 尚未注册该 channel、已禁用，或进程已经退出；等待新的 `available` 后再订阅或恢复状态。
 - payload JSON/64 KiB 错误：payload 根必须是 plain object，不能包含 Date、Map、Set、BigInt、函数、循环引用或非有限数字。

@@ -6,7 +6,7 @@
 
 > 选择边界：Dependency State Channel 面向声明过的直接依赖；Renderer State Channel 面向 Provider 自己的 renderer session。二者都有 retained snapshot/delta 语义，但授权和 wire identity 不同。
 
-当依赖插件需要持续发布“最新状态”而不是单次请求/响应时，使用由宿主治理的 State Channel。它不是全局事件总线：Consumer 必须在 manifest 中声明 Provider 为直接依赖，并声明现有的 `pluginApi` 权限；Provider 不需要新权限或 manifest 字段。
+当依赖插件需要持续发布“最新状态”而不是单次请求/响应时，使用由宿主治理的 State Channel。它不是全局事件总线：Consumer 必须在 manifest 中声明 Provider 为直接依赖，并声明现有的 `pluginApi` 权限；Provider 的注册和发布也必须声明 `pluginApi`，无需新增 manifest 字段。
 
 Provider 在 `onLoad()` 中注册稳定、全小写的 channel 名称，再发布完整 snapshot 或 RFC 7396 Merge Patch delta：
 
@@ -26,11 +26,12 @@ const unsubscribe = await this.onDependencyState('@acme/provider', 'playback', a
   if (event.resyncRequired) {
     // Discard local cache and replace it with event.payload.
   }
-  // Apply snapshot/delta using event.providerEpoch and event.revision ordering.
+  // Replace local state with snapshot payload using epoch/revision ordering.
+  // Provider delta input is materialized by Host; subscriber payload is not a patch.
 }, { replayLatest: true })
 ```
 
-回调只存在于 Consumer 自己的后端进程；不会跨 IPC 传递函数。SDK 在 handler 完成（即使抛错）后 ACK，宿主才会投递下一项。Provider 重启时 epoch 增加；Consumer 收到更高 epoch 时必须丢弃旧状态。payload 必须是根对象的 JSON，最大 64 KiB；高频合并或队列溢出时，宿主发送带 `resyncRequired: true` 的完整 snapshot。不要用 `bus.emit()` 或 topic 前缀替代该能力。
+回调只存在于 Consumer 自己的后端进程；不会跨 IPC 传递函数。SDK 在 handler 完成（即使抛错）后 ACK，宿主才会投递下一项。Provider 重启时 epoch 增加；Consumer 收到更高 epoch 时必须丢弃旧状态。Provider 输入可以是 snapshot 或 Merge Patch delta，Host 合并后统一向订阅者发送完整 `kind: 'snapshot'`。消费端替换状态，不再次合并。`available` 使用 revision 0；`unavailable` 会递增 revision，生命周期事件应在数据去重前处理。单次输入及合并后的 retained state 都必须是根对象的 JSON，最大 64 KiB；高频合并或队列溢出时，宿主发送带 `resyncRequired: true` 的完整 snapshot。不要用 `bus.emit()` 或 topic 前缀替代该能力。
 
 ```text
 plugin-a -> plugin-b -> plugin-c

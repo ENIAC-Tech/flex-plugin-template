@@ -17,14 +17,13 @@ assert.match(view, /providerEpoch/);
 assert.match(view, /revision/);
 assert.match(view, /event\.providerEpoch < runtimeEpoch/);
 assert.match(view, /event\.revision <= runtimeRevision/);
-assert.match(view, /event\.revision === runtimeRevision \+ 1/);
-assert.match(view, /resyncRequired/);
-assert.ok(
-  view.indexOf("event.kind === 'snapshot'") < view.indexOf('event.resyncRequired'),
-  'authoritative snapshots must be applied before non-snapshot resync clearing'
-);
+assert.ok(view.indexOf("event.kind === 'unavailable'") < view.indexOf('event.revision <= runtimeRevision'));
+assert.match(view, /event.kind === 'snapshot'.*runtimeStatus.value = \{ \.\.\.event.payload \}/);
 assert.match(view, /onUnmounted/);
 assert.doesNotMatch(view, /setInterval|setTimeout/);
+const manifest = JSON.parse(await readFile(new URL('../manifest.json', import.meta.url), 'utf8'));
+assert.ok(manifest.permissions.includes('pluginApi'), 'state publisher needs pluginApi');
+assert.doesNotMatch(backend, /hasAppearanceEditor:\s*true/, 'standard template uses the host appearance editor');
 for (const source of [readme, agents]) {
   assert.match(source, /Dependency State Channel/);
   assert.match(source, /Renderer State Channel/);

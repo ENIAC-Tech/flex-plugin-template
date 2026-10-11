@@ -17,7 +17,7 @@ export default class YourPlugin extends FlexPluginBase {
           categoryId: 'plugin',
           icon: 'mdi-puzzle',
           hasFunctionEditor: true,
-          hasAppearanceEditor: true,
+          hasAppearanceEditor: false,
           hasView: false,
           defaultData: { message: 'Hello from plugin!' }
         })
