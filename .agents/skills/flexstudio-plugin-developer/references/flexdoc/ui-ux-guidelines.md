@@ -117,3 +117,9 @@
 # 实时状态 UI
 
 持续的同插件 UI 状态使用 Renderer State Channel retained replay，不用 interval 或 long-polling。`unavailable`、等待 replay snapshot、`resyncRequired` 应显示稳定的不可用/同步中状态，避免闪烁、阻塞交互或展示跨 epoch 的陈旧值。Vue 组件在 mount 订阅并在 unmount 主动 unsubscribe；Host 的 session cleanup 只是安全网。
+
+## Function 容器和选项数量
+
+宿主 AppearancePopover 统一决定可用宽度、边距和滚动区域。中间标签页、Function 容器、路由器和 iframe 使用 width:100%、min-width:0，不得各自追加 max-content 或最小内容宽度。插件只在实际 iframe 宽度内响应式排布；关联的次要字段可同一行，窄屏自然换行。不要使用固定右侧补偿量。
+
+离散选项统一使用 FlexChoice：1 项只读值，2 项 grouped button，3 项及以上宿主菜单。跨 iframe 的弹层由宿主拥有；表单使用 openFormDialog。不要依赖 iframe 内菜单溢出。

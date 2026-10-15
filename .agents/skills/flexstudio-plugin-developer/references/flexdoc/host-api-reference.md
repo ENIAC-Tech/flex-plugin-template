@@ -526,7 +526,7 @@ await this.onUnitEvent('acme.open-url', 'pressed', async (event) => {
 
 权限：`chart`
 
-`hostApi.chart` 用于把插件自定义性能/传感器数据接入内置 Chart Unit 的数据树。实时数据只保存在 host runtime cache 中，不写入项目文件或 `defaultData`；插件禁用、卸载、进程退出或崩溃时，宿主会清理该插件注册的数据源和 entries。
+`hostApi.chart` 用于把插件的数值与状态数据接入内置 Chart 和插件 Chart 共用的数据树。实时数据只保存在 host runtime cache 中，不写入项目文件或 `defaultData`；插件禁用、卸载、进程退出或崩溃时，宿主会清理该插件注册的数据源和 entries。
 
 `registerDataSource()` 以插件为所有者注册或替换一个数据源。每个插件最多 16 个数据源；`sourceId` 是插件内本地 ID，长度 1-80，只允许字母、数字、`.`、`_`、`-`。`name` 长度 1-80，`icon` 长度 1-80。宿主生成全局 provider id，插件不能指定或覆盖 provider metadata。
 
@@ -1038,3 +1038,28 @@ await this.hostApi.unit.setUnitIcon(
 <!-- plugin-cycled-slider:end -->
 
 OAuth loopback flow 默认等待 120 秒，`timeoutMs` 最大为 10 分钟。插件进程的 OAuth Host API 等待窗口使用同一上限并增加 5 秒用于宿主清理和 IPC 响应；普通 Host API 调用仍为 30 秒。前端不要等待完整授权过程的 backend RPC：启动后台任务后及时返回，再通过 Renderer State Channel 汇报授权结果。Brokered OAuth 仍属于设计提案，当前实现没有该 API。
+
+## 原生 panel 与 Unit 状态
+
+以下三个方法都需要 manifest 的 unit 权限。Host 从插件进程身份确定所有者，只接受同插件、已加载的正确类型 Unit。
+
+```ts
+await this.hostApi.unit.setPanelModel(serialNumber, unitUuid, model)
+await this.hostApi.unit.ackPanelAction(
+  serialNumber, unitUuid, token, 'ok', // ok | expired | failed | unknown
+  'Done',
+)
+await this.hostApi.unit.setUnitState(serialNumber, labelUuid, 'attention')
+```
+
+setPanelModel 使用 PanelModel v1，先校验再复制模型，调用者后续修改不影响待发数据。每台设备只允许一个推送在途，各 Unit 只保留最新一份；USB 最多 4 次/秒，RF 最多 1 次/秒。新增 attention 状态可提前发送，但仍遵守设备单在途。卸载插件、删除 Unit 和设备断开会清理队列与相关状态。
+
+ackPanelAction 的 token 必须来自设备 action 事件。message 可选，最多 240 UTF-8 字节，回执整体最多 1024 字节；不要发送提示词、命令全文或原始异常。回执通过异步 BUS 发给设备，不调用设备 UI 线程上的超时 RPC。过期或不匹配 token 由设备忽略。
+
+setUnitState 仅适用于 label/value-label，state 为 idle/active/attention/success/error/disabled。panel 条目的状态通过模型提供，不调用此 API。label/value-label 点按由插件处理，设备跳页使用独立 PageJump Unit。
+
+### Chart 数据可用性与时间显示（SDK 2.2）
+
+`PluginChartEntryInput` 增加 `availability?: 'available' | 'unavailable' | 'stale' | 'offline'`（省略为 available）以及 `displayText?: string`。后者用于数值/时间格式，例如 `2h 15m`、`10/13 18:30`，限 1–80 字符，仅允许数字、空格和 `:./%+eEhm ds-`，不是任意业务文案。Chart 原生字体覆盖该字符集。图表仍使用 rawValue 计算，displayText 只覆盖显示字符串。
+
+不可用数据仍提交有限 rawValue，但渲染器忽略该值并显示 `--`，不画 0% 或保留旧圆环。图表数据源注销或完整快照缺少已订阅 key 也应清空旧数据。不要把未知值、断连或过期状态编码成真实零值。共享数据源面向内置 Chart 与插件 Chart，只有 Unit 的创建定义和生命周期归属不同。

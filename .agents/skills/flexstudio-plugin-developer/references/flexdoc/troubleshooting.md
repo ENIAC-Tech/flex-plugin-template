@@ -29,16 +29,16 @@
 ```text
 WebSocket connection failed
 connection refused
-unauthorized
 ```
 
 检查：
 
 - FlexStudio 是否正在运行。
-- 端口是否为默认 `34579`。
-- 是否需要 token。
-- `--host`、`--port`、`--token` 是否与 FlexStudio 控制服务一致。
-- 环境变量 `FLEX_WS_TOKEN` 或 `PLUGIN_WS_TOKEN` 是否正确。
+- **设置 > Plugins** 右上角的开发监听是否开启（默认关闭）。
+- 设置页是否显示端口占用或监听失败；端口占用时选择其他端口并应用。
+- `flexcli plugin-v2 config` 显示的已保存端口是否与宿主一致；首次使用默认为 `34579`。
+- 使用 `flexcli plugin-v2 config --port <port>` 保存匹配端口，或在连接命令中显式指定 `--port`。
+- host 应为本机 `127.0.0.1`；开发连接直接接受命令。
 
 示例：
 

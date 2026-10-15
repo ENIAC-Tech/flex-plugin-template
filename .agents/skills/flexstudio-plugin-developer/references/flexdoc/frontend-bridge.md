@@ -31,6 +31,7 @@ mountFlexPage({
 - 注入透明 iframe 样式。
 - 同步 FlexStudio 主题到文档和 Vuetify。
 - 监听内容高度变化并上报给宿主。
+- 传入 `preferredWidth` 时向宿主声明编辑器的期望宽度（见下文“宽度协商”）。
 
 ## 按 typeId 指定组件
 
@@ -429,6 +430,32 @@ SDK 会自动设置透明背景、隐藏滚动条并上报内容高度。编辑�
 
 开发者仍应避免在插件页面中使用固定全屏布局，除非该页面是 `unit-view`。
 
+### 宽度协商
+
+iframe 没有可供宿主测量的内容宽度，宿主无法根据编辑器内容自动决定弹窗宽度。编辑器页面可以向宿主声明一个期望宽度（CSS px），宿主会在自己能提供的空间内取值：
+
+```ts
+mountFlexPage({
+  components: { unitFunctionEditor: UnitFunctionEditor },
+  // 单个数字作用于所有编辑器页面；也可以按 pageKind 分别声明
+  preferredWidth: { 'unit-function-editor': 560 }
+})
+```
+
+运行时也可以随内容变化调整，传 `null` 撤回声明、使用宿主默认宽度：
+
+```ts
+import { setPreferredContentWidth } from '@flexsdk/runtime'
+
+setPreferredContentWidth(advancedMode ? 640 : 480)
+```
+
+- 声明值只是期望：宿主先把它限制在 240–1200 px，再由所在的编辑器外壳（如 Unit 浮动编辑器，最大 680 px 且不超过窗口）进一步限制。页面布局必须能在更窄的宽度下正常换行。
+- 不声明时沿用宿主默认宽度。
+- 宿主重建 bridge 端口（`Bridge Reinitialize`）后，SDK 会自动重发最近一次声明。
+- `unit-view` 页面由 Unit 尺寸决定大小，忽略该声明。
+- 协议消息为 `{ type: 'content-preferred-width', width: number | null }`，与 `content-resize`（高度）相互独立；不支持该消息的旧版宿主会忽略它。
+
 <!-- plugin-cycled-slider:start -->
 ## Plugin cycled / button-group Function Bridge
 
@@ -480,3 +507,17 @@ await bridge.setSelectedFunctionData(functionId, data)
 <!-- plugin-cycled-slider:end -->
 
 前端桥接请求超时为 20 秒，覆盖宿主 backend RPC 的 15 秒等待窗口。超时不会自动取消已经执行的后端操作；较长工作应以 job 启动并通过 State Channel 汇报状态。
+
+## 宿主标准表单
+
+编辑器和配置页通过 `useFlexBridge().openFormDialog(form)` 打开宿主 FormDialog。表单包含 title、confirmText、cancelText、requiredText、tooLongText 和 fields。每个字段声明 key、label、type（text / textarea / select）、value，可选 required、maxBytes；select 使用 items: [{ value, title }]。
+
+确认返回字段键到字符串的映射；取消返回 null，iframe 断开时取消。宿主执行必填、UTF-8 字节长度和选项校验；插件收到结果后仍校验业务规则，再用 setUnitData 保存。表单等待不使用普通 RPC 的 20 秒超时，不接收 HTML 或回调。一次只显示一个插件表单。unit-view 不允许打开表单。
+
+## 跨 iframe 的选择菜单（SDK 2.2）
+
+从 `@flexsdk/runtime/vue` 导入 `FlexChoice`，以 v-model、label、items（`{title, value, disabled?}`）绑定选项。一个选项展示只读值，两个选项展示 grouped button，三个及以上打开宿主菜单。不要在插件 iframe 内通过增高 iframe 或 overflow hack 修补弹层裁切。
+
+底层 `bridge.openChoiceMenu({label, value?, items, anchor:{x,y,width,height}})` 返回 `{value}` 或取消时的 null。anchor 是 iframe 内 CSS 像素坐标，宿主负责坐标换算、屏幕边界和菜单层级。value 为 string 或 number；items 1–256 项，value 不重复。仅编辑器和设置页可用，unit-view 不可用。
+
+用户选择不受普通 RPC 超时限制。编辑上下文切换、iframe 销毁、外部滚动/窗口缩放会取消菜单，避免旧结果写入新 Unit。FlexChoice 支持键盘打开并在关闭后归还焦点；使用 error 事件处理失败。

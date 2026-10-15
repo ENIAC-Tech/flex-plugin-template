@@ -196,7 +196,7 @@ interface PluginUnitDefaultActivationConfig {
 
 ```ts
 interface PluginUnit {
-  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider' | 'value-label' | 'label' | 'button-group'
+  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider' | 'value-label' | 'label' | 'button-group' | 'panel'
   pluginUUID: string
   pluginVersion: string
   unitId: string
@@ -205,7 +205,7 @@ interface PluginUnit {
 
 | 字段 | 说明 |
 | --- | --- |
-| `type` | Unit 类型：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label`、`label` 或 `button-group`。 |
+| `type` | Unit 类型：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label`、`label`、`button-group` 或 `panel`。 |
 | `pluginUUID` | 注册该 Unit 的插件 UUID，必须与当前插件一致。 |
 | `pluginVersion` | 当前插件版本。通常由 `FlexPluginBase` 从加载上下文填充。 |
 | `unitId` | 插件内 Unit ID，必须与外层 `unitId` 一致。 |
@@ -689,3 +689,73 @@ this.createUnitTemplate({
 - primary text 和 primary icon 由设备端运行时绘制；预渲染 PNG 不包含这两个元素。
 - `label` 不新增设备端 `changed` 事件。插件通过 `hostApi.unit.setLabelText()` 和 `hostApi.unit.setUnitIcon()` 主动更新设备显示。
 <!-- plugin-cycled-slider:end -->
+
+## panel：原生交互面板
+
+panel 在设备本地渲染条目卡片、详情页和动作，在概览、介入、聚焦、提示四种模式间切换。它使用内置 PuHuiTi、Consolas 和图标字体，运行时区域不参与部署栅格化；Theme 提供背景、文字与按钮颜色、字号和圆角。不要设置 hasView、hasAppearanceEditor、interactionMode、defaultActivation、functions、slider、valueLabel、label 或 tapAction。功能编辑器可通过 hasFunctionEditor: true 提供业务配置。
+
+```ts
+this.createUnitTemplate({
+  unitId: 'monitor', typeId: '@demo/monitor.panel',
+  name: 'Monitor', categoryId: 'plugin',
+  plugin: {
+    type: 'panel', pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion, unitId: 'monitor',
+  },
+  panel: { defaultItemCount: 3, staleAfterMs: 30000 },
+  hasFunctionEditor: true,
+  defaultData: { panel: { autoAttention: true } },
+})
+```
+
+panel.exampleModel 可提供静态编辑示例，必须符合 PanelModel。仅放合成内容，不放真实会话、账户或运行快照。实际卡片数量按宽度决定，defaultItemCount 不替代运行时布局规则。没有设备明确公布 capabilities.pluginPanel.version=1 时，宿主会提示更新固件；旧固件沿用 FallbackUnit。
+
+PanelModel 包含 v: 1、可选 notice/defaultItem/staleAfterMs 和 items。每个条目有 id、title、state、pages，可选 subtitle/stateText/badge/timer；页面有 id、lines、actions，可选 title/timer/progress。timer.since 是 Unix 毫秒，progress 为 [完成数, 总数]。state 为 idle、active、attention、success、error、disabled。
+
+动作包含 id、label，可选 style（normal/primary/danger）、enabled、confirm: 'hold'、priority 和 requireFullLabel。priority 数字越大越先省略；requireFullLabel 无法完整显示时整项隐藏，不缩短敏感规则。行包含 text，可选 mono 和 secondary；mono 行使用 Consolas，并回退到内置中文字体。
+
+序列化模型最多 12288 字节，最多 8 个条目、每条目 8 页、每页 4 个动作和 4 行；文本字段最多 240 UTF-8 字节。模型和事件 ID 不可含 NUL。Host 同时检查含 Unit uuid/typeId/token 的设备事件不超过 1024 字节。非法或超限模型在发送前拒绝，平台不静默截断。
+
+选中、翻页、按压反馈、长按和计时在设备本地完成。介入等待正在操作的用户空闲 5 秒；聚焦空闲 30 秒回概览；动作提交 10 秒无回执显示结果未知。陈旧或 notice 状态不允许写动作。业务请求是否成功，以后续模型为准，不以按钮回执替代。
+
+`panel-more` 是隐藏会话的状态图标窄栏：只显示当前隐藏会话中存在的状态，每种状态一个图标，纵向左对齐，不显示 More 文案或数量。点击仍轮换下一组。默认布局为 Flow2Pro 预留 32px、FlexbarV2 预留 24px，其余概览宽度均分给会话；旧 `showSummary` 仅兼容读取，不再控制显示。宿主只自动收紧可识别的旧默认布局，保留自定义元素位置。
+
+## label / value-label 状态与交互
+
+label/value-label 点按和长按事件交给插件处理；不声明 tapAction，不提供 Target Page。设备页面导航使用独立的 PageJump Unit。旧插件应在 migrateUnit 中删除废弃的 tapAction 数据。
+
+setUnitState 给 label/value-label 的动态文字和图标应用固定语义色，不提供任意运行时颜色 API。state 的取值与面板相同。label 的原有文字、图标 API 继续使用；不要把动态文字或完整模型保存进 Project。
+
+面板可提供 `pagination: { offset, total }`，items 只承载当前窗口。设备浏览完当前窗口后发送 `{ event: "browse", offset }`；插件从完整数据源投影下一窗口，不能按显示容量丢弃待处理请求。分页事件不执行业务操作。
+
+## 原生插件 Chart Unit（SDK 2.2）
+
+`plugin.type: 'chart'` 为插件专用原生图表 Unit。它使用与内置 Chart 相同的六种元素、样式、数据订阅、设备推送、字体构建和固件渲染器：`chart-text`、`chart-gauge`、`chart-progress-bar`、`chart-line`、`chart-series-bar`、`chart-heatmap`。静态 text/icon/image 可以一起组成默认布局。
+
+文字优先使用 `builtin:font:puhuiti` 或 `builtin:font:consola`。这两个引用直接复用设备内置字体，不生成字体子集，也不随项目重复传输字体文件。预览使用相同字体和原生渲染规则。自定义字体仍通过项目资源和子集部署；不会仅凭字体名称替换。`chart-text` 和 `status-count` 的文字背景应为透明、无边框，Unit 的底色和轮廓放在 `appearance.background`，不要把 Unit surface 复制到文字元素。
+
+- 必须提供 `appearanceOverride`，并绑定 `plugin:<pluginUUID>:<sourceId>:<entryKey>` 数据源。不要声明 iframe `hasView` 或 `hasAppearanceEditor`，也不要附加 canvas/functions、slider、label 或 button-group 运行时配置。
+- 使用已有 `chart` 权限、`registerChartDataSource`、`publishChartEntries`。不新增图片推送协议。设备通过现有 load/unload 和 rawEvent（touch、long-pressed）通知插件。
+- `defaultGeometry: {width: 3, height: 1}` 指定新建 Unit 的默认格数；两项均为正数，最大 32。所有添加入口通过同一 Unit 工厂消费此默认值。迁移旧 Unit 应保留其 geometry，不应静默挤占邻居。
+- 多实例数据源可在元素 `dataSourceKey` 或 line `sources[].key` 中使用 `{unitUUID}`，Studio、设备和字体收集均按当前 Unit UUID 解析。共享指标不必按设备 load 才发布，这样新建 Unit 在编辑器中也能显示真实数据。
+- gauge 可声明 `style.thresholds: [{max: 5, color: '#EF5350'}, {max: 20, color: '#FFB74D'}]`，按满足 displayValue <= max 的最小 max 选色，其他数值使用 style.color；最多 8 条。与内置 Chart 共用语义。
+- 使用 `migrateUnit` 将旧类型迁移为 chart 时，返回 `{unit}`，一次性更新 plugin、appearance、config，保留 Unit UUID、位置和尺寸，并给新元素分配唯一 UUID。不要只改 type 而保留空布局。
+
+本能力需要同步支持 chart 类型的 FlexStudio 和固件；只升级 SDK 不能让旧固件识别新 Unit。完整示例见 FlexPluginFullTest 的 native-chart 定义及 runtime-load 数据源。
+
+## 状态计数元素（SDK 2.3）
+
+`status-count` 是一个可选择状态的原生文字元素，同一类型可放置多份。每个元素显示一行状态名称和数量；不使用图表外观或通用图表配置面板。它复用现有 `chart` 数据发布、设备文字绑定、字体构建和文字渲染，不新增推送通道。
+
+- Unit 使用现有原生数据容器 `plugin.type: 'chart'`，设置 `availableElements: ['status-count', 'text', 'icon', 'image']` 限定高级编辑器的元素面板，`defaultGeometry: {width: 1, height: 1}` 指定新建尺寸。`availableElements` 当前仅适用于该原生容器，省略时保持原图表元素面板。
+- 元素 `data` 为 `{dataSourceKey, updateInterval, options: [{label, dataSourceKey}]}`。`options` 的数据键唯一，当前选中键必须在其中。高级编辑器只显示状态选择器；插件自行决定状态定义，不在宿主硬编码业务状态。
+- 同一组选项也放在 Unit 的 `defaultData.statusCountOptions`，供拖拽、双击新增元素使用。复制粘贴保留元素已有选项。
+- 各数据源发布 `rawValue` 数量；状态名称由元素当前选项的 `options.label` 提供，宿主与固件将标签和数字组合为一行，例如 `Running 3`。不要将状态名称写入仅接受数值格式的 `displayText`；设备字体闭包合并所有可选标签与数字字符。语言改变后需要更新布局和文字域；使用设备内置字体时不重新上传字体文件，自定义字体按新字符域重新构建子集。
+- `status-count` 保留为设备元素，沿用 `chart.text:<elementUUID>` 原生文字绑定，固件用同一文字渲染器识别它；旧固件不识别该元素，需升级匹配的固件。设备回读后仍能选择状态。
+- 升级插件时通过 `migrateUnit` 替换旧统计布局并更新元素面板，给新元素分配 UUID。仅在识别出旧默认尺寸时调整尺寸，保留位置和已迁移后的用户编辑。
+
+完整示例：FlexPluginFullTest 的 Status Count Probe；实际产品示例：Codex Agent status 的运行中、已完成、待处理三行。
+
+### Chart 圆环的一致性
+
+`chart-gauge` 与内置 Chart 共用渲染器。上位机和固件的圆环几何由工作区 `contracts/chart-render/v1/ring.json` 统一生成：按设备像素在元素内居中、等宽圆头线条、135° 起始角及 270° 扫角，背景透明度为 64/255。不依赖 SVG 私有轮廓或 LVGL 主题默认样式。此变更不增加插件配置字段；插件继续提供已有的几何、颜色、阈值和数据绑定。要得到一致的预览和实机效果，需要同时更新宿主与固件。

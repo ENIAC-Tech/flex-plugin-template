@@ -498,3 +498,27 @@ try {
 
 `button-group` 的建议流程是：监听 `changed` -> 根据 `activeButtonIds` 执行业务动作；需要由插件主动恢复或切换状态时，调用 `hostApi.unit.setButtonGroupState(serialNumber, unitUuid, activeButtonIds)`。SDK 会通过 Host API 校验按钮 ID、单选/多选和 mandatory 约束。
 <!-- plugin-cycled-slider:end -->
+
+## 面板模型与事件辅助
+
+从 @flexsdk/runtime 导入 buildPanelModel、validatePanelModel；模型、页面、动作、事件和结果类型从 @flexsdk/types 导入。辅助函数使用固定结构验证，不依赖前端动态代码生成。buildPanelModel 返回校验后的独立副本。
+
+```ts
+await this.onPanelEvent('@demo/monitor.panel', async event => {
+  if (event.event === 'action' && event.serialNumber) {
+    const result = await performAction(event.item, event.page, event.action)
+    await this.ackPanelAction(
+      event.serialNumber, event.uuid, event.token, result.outcome,
+    )
+  }
+})
+await this.setPanelModel(serialNumber, unitUuid, buildPanelModel({
+  v: 1,
+  items: [{ id: 'item', title: 'Status', state: 'idle', pages: [] }],
+}))
+await this.setUnitState(serialNumber, labelUuid, 'idle')
+```
+
+onPanelEvent 复用 onUnitEvent(typeId, 'panel')，验证并解包设备 payload，卸载时由 SDK 清理。事件为 select {item: string|null}、action {item,page,action,token}、longPress {item,area:'card'|'info'}，并含 uuid/typeId/serialNumber。Host 主题为 device.plugin.unit-panel，不让设备提供可信插件身份。
+
+插件按当前内存中的业务状态处理动作。请求已消失或事件对应的条目/页面/动作失效时回复 expired；超时无法确定结果时回复 unknown，不自动重试。多设备操作需要共享同一个业务请求去重状态。原生界面不把快捷回复正文传回插件，只发动作 ID。

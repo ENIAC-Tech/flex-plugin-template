@@ -167,16 +167,17 @@ async function callBackend() {
 
 ## 本地开发
 
-启动 FlexStudio 后，在插件目录外或插件目录内运行：
+启动 FlexStudio，在 **设置 > Plugins** 右上角开启开发监听（默认关闭，端口初始为 `34579`），然后在插件目录外或插件目录内运行：
 
 ```bash
 flexcli plugin-v2 dev .
 ```
 
-如果 FlexStudio 的开发控制 WebSocket 使用自定义端口或 token：
+如果在 FlexStudio 中设置了自定义监听端口，先保存相同的 CLI 端口：
 
 ```bash
-flexcli plugin-v2 dev . --host 127.0.0.1 --port 34579 --token <token>
+flexcli plugin-v2 config --port 34579
+flexcli plugin-v2 dev .
 ```
 
 CLI 会执行以下动作：
@@ -187,18 +188,7 @@ CLI 会执行以下动作：
 4. 监听 `manifest.json`、`src/backend`、`src/frontend`、`locales`、`assets` 变化。
 5. 文件变化后自动重新构建并触发插件重载。
 
-也可以通过环境变量提供 token：
-
-```bash
-FLEX_WS_TOKEN=<token> flexcli plugin-v2 dev .
-```
-
-Windows PowerShell：
-
-```powershell
-$env:FLEX_WS_TOKEN = '<token>'
-flexcli plugin-v2 dev .
-```
+宿主和 CLI 都会保存各自的端口设置。开发连接无需鉴权握手，直接使用本机监听地址。关闭开发监听或更换端口会断开当前开发连接并卸载该连接的开发源。
 
 ## 构建、验证和打包
 
