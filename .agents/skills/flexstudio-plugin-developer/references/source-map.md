@@ -15,6 +15,9 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `packages/types/src/manifest.ts`: manifest types.
 - `packages/types/src/plugin-definitions.ts`: Library and Unit definition types.
 - `packages/types/src/plugin-api.ts`: Host API contracts.
+- `packages/types/src/plugin-input.ts`: generated function definitions, raw events, contexts and binding settings contracts.
+- `packages/runtime/src/input-function.ts`: defineFunction, lifecycle, availability and per-device/binding serial delivery.
+- `packages/runtime/src/input.ts`: gestures, quantize, absolute, feedback and haptic tools.
 - `packages/runtime/src/plugin-base.ts`: `FlexPluginBase`.
 - `packages/runtime/src/plugin-value-label.ts`: `value-label` format/custom charset and display helpers.
 - `packages/runtime/src/plugin-numeric-format.ts`: shared `%f` numeric format parser used by slider and value-label.
@@ -39,6 +42,11 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `src/main/plugin/process-host.ts`: backend process management.
 - `src/main/plugin/api-broker.ts`: Host API dispatch.
 - `src/main/plugin/capability-registry.ts`: permission and capability registry.
+- `src/types/plugins/plugin-input.ts`: canonical input API contract, synced into SDK/CLI by `script/sync-plugin-contracts.mjs`.
+- `src/main/plugin/input-function-bridge.ts`: deployed bindings, generations, reconnect and feedback ownership.
+- `src/common/plugin-input-functions.ts`: function catalog adaptation and input-channel filtering.
+- `src/common/input-binding-edit-v1.ts`: immutable default/override edits shared by all editors.
+- `src/renderer/plugin/input-binding-editor.ts`: settings sessions, project commands and stale-save guards.
 - `src/main/plugin/definition-registry.ts`: active definitions.
 - `src/main/plugin/dependency-state-registry.ts`: direct-dependency retained state, replay, ACK queue, resync, rate limits, and Provider lifecycle.
 - `src/main/plugin/renderer-state-registry.ts`: same-plugin renderer retained state, replay, ACK queue, resync, payload limits, and session cleanup.
@@ -59,6 +67,11 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `src/renderer/composables/usePluginUnitMigration.ts`: renderer project Unit migration orchestration.
 - `src/renderer/composables/useProjectPluginDependencyCheck.ts`: project-open missing/update plugin detection and Marketplace navigation.
 - `src/preload/index.js`: renderer IPC exposure for plugin migration calls.
+
+## Skill Maintenance
+
+- `flex-plugin-template/.agents/skills/flexstudio-plugin-developer/`: canonical entrypoint and hand-maintained reference routing.
+- `flex-plugin-template/scripts/sync-plugin-skill-docs.mjs`: sole sync implementation; `--docs-root` supplies authoritative Markdown, `--target-root` updates a plugin. The Codex plugin wrapper delegates here. These are maintenance inputs, not runtime dependencies.
 
 ## Documentation Snapshot
 

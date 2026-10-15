@@ -521,3 +521,7 @@ await bridge.setSelectedFunctionData(functionId, data)
 底层 `bridge.openChoiceMenu({label, value?, items, anchor:{x,y,width,height}})` 返回 `{value}` 或取消时的 null。anchor 是 iframe 内 CSS 像素坐标，宿主负责坐标换算、屏幕边界和菜单层级。value 为 string 或 number；items 1–256 项，value 不重复。仅编辑器和设置页可用，unit-view 不可用。
 
 用户选择不受普通 RPC 超时限制。编辑上下文切换、iframe 销毁、外部滚动/窗口缩放会取消菜单，避免旧结果写入新 Unit。FlexChoice 支持键盘打开并在关闭后归还焦点；使用 error 事件处理失败。
+
+## 设备输入功能
+
+物理控件绑定使用 `defineFunction` / `FlexPluginBase.functions`，独立于 Unit 定义。声明 `input` 权限；复杂设置使用 `input-function-settings` 和绑定会话桥接，反馈通过当前上下文，状态按设备与绑定隔离。完整生命周期、字段、触觉和验证要求见[输入功能](./input-functions.md)。

@@ -522,3 +522,7 @@ await this.setUnitState(serialNumber, labelUuid, 'idle')
 onPanelEvent 复用 onUnitEvent(typeId, 'panel')，验证并解包设备 payload，卸载时由 SDK 清理。事件为 select {item: string|null}、action {item,page,action,token}、longPress {item,area:'card'|'info'}，并含 uuid/typeId/serialNumber。Host 主题为 device.plugin.unit-panel，不让设备提供可信插件身份。
 
 插件按当前内存中的业务状态处理动作。请求已消失或事件对应的条目/页面/动作失效时回复 expired；超时无法确定结果时回复 unknown，不自动重试。多设备操作需要共享同一个业务请求去重状态。原生界面不把快捷回复正文传回插件，只发动作 ID。
+
+## 设备输入功能
+
+物理控件绑定使用 `defineFunction` / `FlexPluginBase.functions`，独立于 Unit 定义。声明 `input` 权限；复杂设置使用 `input-function-settings` 和绑定会话桥接，反馈通过当前上下文，状态按设备与绑定隔离。完整生命周期、字段、触觉和验证要求见[输入功能](./input-functions.md)。

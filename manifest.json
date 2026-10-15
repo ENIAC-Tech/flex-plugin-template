@@ -15,9 +15,9 @@
   "runtime": {
     "startupTimeoutMs": 15000
   },
-  "devices": ["Flow2Pro", "FlexbarV2", "FlexBoardV1", "MassX"],
+  "devices": ["Flow2Pro", "FlexbarV2"],
   "requiredCapabilities": [],
-  "permissions": ["store", "logger", "device", "definitions", "bus", "unit", "ui", "pluginApi"],
+  "permissions": ["store", "logger", "device", "definitions", "input", "bus", "unit", "ui", "pluginApi"],
   "dependencies": [],
   "hasConfigPage": true,
   "entry": {

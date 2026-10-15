@@ -1,6 +1,6 @@
 # Bundled FlexStudio Plugin Docs Index
 
-Source commit: `02a8f35561ed715fc330e6096cae52378e4d0af4-dirty`
+Source commit: `unknown`
 Source path: `docs/zh/sdk/plugin-development`
 
 Load only the docs needed for the current task.
@@ -14,6 +14,7 @@ Load only the docs needed for the current task.
 | `flexdoc/project-structure.md` | Expected plugin project layout and generated files. |
 | `flexdoc/manifest.md` | Manifest fields, permissions, entries, platforms, devices, and dependencies. |
 | `flexdoc/unit-definitions.md` | Library and Unit definition payloads and validation rules. |
+| `flexdoc/input-functions.md` | Physical input functions, binding settings sessions, lifecycle, tools, feedback and haptics. |
 | `flexdoc/backend-runtime.md` | FlexPluginBase lifecycle, backend RPC, events, and runtime patterns. |
 | `flexdoc/frontend-bridge.md` | Iframe bridge, mountFlexPage, useFlexBridge, and frontend page contracts. |
 | `flexdoc/ui-ux-guidelines.md` | Plugin UI/UX design rules for Vuetify 3 pages, Unit editors, runtime views, theme colors, density, and layout. |

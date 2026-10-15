@@ -747,12 +747,14 @@ setUnitState 给 label/value-label 的动态文字和图标应用固定语义色
 
 `status-count` 是一个可选择状态的原生文字元素，同一类型可放置多份。每个元素显示一行状态名称和数量；不使用图表外观或通用图表配置面板。它复用现有 `chart` 数据发布、设备文字绑定、字体构建和文字渲染，不新增推送通道。
 
-- Unit 使用现有原生数据容器 `plugin.type: 'chart'`，设置 `availableElements: ['status-count', 'text', 'icon', 'image']` 限定高级编辑器的元素面板，`defaultGeometry: {width: 1, height: 1}` 指定新建尺寸。`availableElements` 当前仅适用于该原生容器，省略时保持原图表元素面板。
+- 状态展示 Unit 使用 `plugin.type: 'standard'`，由宿主的普通 Unit 视图和外观编辑器呈现；设置 `availableElements: ['status-count', 'text', 'icon', 'image']` 限定高级编辑器的元素面板，`defaultGeometry: {width: 1, height: 1}` 指定新建尺寸。只有需要图表元素的 Unit 才使用 `chart`，例如额度圆环。
+- `availableElements` 适用于 `standard` 和 `chart`。显式指定时，`appearanceOverride.elements` 提供完整元素，宿主从空外观构建，不插入默认名称或图标元素，也不接受 primary 元素补丁；元素 UUID 必须唯一。普通 Unit 的面板和外观不能包含 `chart-*` 图表元素。省略该字段时保留原类型的默认外观构建规则。
+- 动态计数复用 `chart` Host API 和既有设备数据协议；数据通道名称不决定 Unit 类型。宿主与固件按普通 Unit 实际包含的 `status-count` 元素启用数据消费，不依赖插件名称或业务 ID。断连、过期和来源移除显示 `--`，真实零值保留。
 - 元素 `data` 为 `{dataSourceKey, updateInterval, options: [{label, dataSourceKey}]}`。`options` 的数据键唯一，当前选中键必须在其中。高级编辑器只显示状态选择器；插件自行决定状态定义，不在宿主硬编码业务状态。
 - 同一组选项也放在 Unit 的 `defaultData.statusCountOptions`，供拖拽、双击新增元素使用。复制粘贴保留元素已有选项。
 - 各数据源发布 `rawValue` 数量；状态名称由元素当前选项的 `options.label` 提供，宿主与固件将标签和数字组合为一行，例如 `Running 3`。不要将状态名称写入仅接受数值格式的 `displayText`；设备字体闭包合并所有可选标签与数字字符。语言改变后需要更新布局和文字域；使用设备内置字体时不重新上传字体文件，自定义字体按新字符域重新构建子集。
 - `status-count` 保留为设备元素，沿用 `chart.text:<elementUUID>` 原生文字绑定，固件用同一文字渲染器识别它；旧固件不识别该元素，需升级匹配的固件。设备回读后仍能选择状态。
-- 升级插件时通过 `migrateUnit` 替换旧统计布局并更新元素面板，给新元素分配 UUID。仅在识别出旧默认尺寸时调整尺寸，保留位置和已迁移后的用户编辑。
+- 升级插件时通过 `migrateUnit` 将旧状态 Unit 改为 `standard` 并更新元素面板。已有 `status-count` 元素保留 UUID、样式和编辑；更早的统计布局需要转换时，给新元素分配 UUID。保留 Unit 的身份、位置和尺寸，并提升插件版本以触发迁移。
 
 完整示例：FlexPluginFullTest 的 Status Count Probe；实际产品示例：Codex Agent status 的运行中、已完成、待处理三行。
 

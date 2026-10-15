@@ -3,10 +3,13 @@
 import { execFileSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
-import { basename, dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const sourceRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
+const args = parseArgs(process.argv.slice(2))
+const repoRoot = args.targetRoot
+const sourceSkillRoot = join(sourceRoot, '.agents', 'skills', 'flexstudio-plugin-developer')
 const skillRoot = join(repoRoot, '.agents', 'skills', 'flexstudio-plugin-developer')
 const referencesRoot = join(skillRoot, 'references')
 const flexdocOutputRoot = join(referencesRoot, 'flexdoc')
@@ -20,6 +23,7 @@ const DOC_FILE_ORDER = [
   'project-structure.md',
   'manifest.md',
   'unit-definitions.md',
+  'input-functions.md',
   'backend-runtime.md',
   'frontend-bridge.md',
   'ui-ux-guidelines.md',
@@ -38,6 +42,7 @@ const DOC_DESCRIPTIONS = {
   'project-structure.md': 'Expected plugin project layout and generated files.',
   'manifest.md': 'Manifest fields, permissions, entries, platforms, devices, and dependencies.',
   'unit-definitions.md': 'Library and Unit definition payloads and validation rules.',
+  'input-functions.md': 'Physical input functions, binding settings sessions, lifecycle, tools, feedback and haptics.',
   'backend-runtime.md': 'FlexPluginBase lifecycle, backend RPC, events, and runtime patterns.',
   'frontend-bridge.md': 'Iframe bridge, mountFlexPage, useFlexBridge, and frontend page contracts.',
   'ui-ux-guidelines.md': 'Plugin UI/UX design rules for Vuetify 3 pages, Unit editors, runtime views, theme colors, density, and layout.',
@@ -51,6 +56,7 @@ const DOC_DESCRIPTIONS = {
 function parseArgs(argv) {
   const args = {
     docsRoot: process.env.FLEXSTUDIO_DOCS_ROOT,
+    targetRoot: sourceRoot,
     check: false,
   }
 
@@ -58,6 +64,8 @@ function parseArgs(argv) {
     const arg = argv[i]
     if (arg === '--docs-root') {
       args.docsRoot = argv[++i]
+    } else if (arg === '--target-root') {
+      args.targetRoot = argv[++i]
     } else if (arg === '--check') {
       args.check = true
     } else {
@@ -66,15 +74,16 @@ function parseArgs(argv) {
   }
 
   if (!args.docsRoot) {
-    args.docsRoot = resolve(repoRoot, '..', 'FlexStudioDocumentation', 'docs', 'zh', 'sdk', 'plugin-development')
+    args.docsRoot = resolve(sourceRoot, '..', 'FlexStudioDocumentation', 'docs', 'zh', 'sdk', 'plugin-development')
   }
 
   args.docsRoot = resolve(args.docsRoot)
+  args.targetRoot = resolve(args.targetRoot)
+  if (!existsSync(join(args.targetRoot, 'manifest.json'))) throw new Error(`Plugin target not found: ${args.targetRoot}`)
   return args
 }
 
 async function main() {
-  const args = parseArgs(process.argv.slice(2))
   if (!existsSync(args.docsRoot)) {
     throw new Error(`FlexStudio plugin docs root not found: ${args.docsRoot}`)
   }
@@ -92,6 +101,9 @@ async function main() {
 
 async function buildGeneratedFiles(docsRoot) {
   const files = new Map()
+  for (const name of ['SKILL.md', 'references/task-router.md', 'references/source-map.md', 'references/fallback-quick-reference.md']) {
+    files.set(join(skillRoot, name), (await readFile(join(sourceSkillRoot, name), 'utf8')).replace(/\r\n/g, '\n'))
+  }
   const entries = await readdir(docsRoot)
   const missing = DOC_FILE_ORDER.filter((fileName) => !entries.includes(fileName))
   if (missing.length > 0) {
@@ -123,6 +135,7 @@ async function buildGeneratedFiles(docsRoot) {
 
 function normalizeMarkdown(markdown) {
   return markdown
+    .replace(/\r\n/g, '\n')
     .replace(/^\uFEFF/, '')
     .replace(/<span class="plugin-diagram">[\s\S]*?<\/span>\n?/g, '')
     .replace(/^!\[[^\]]*\]\([^)]*\/diagrams\/plugin-development\/[^)]*\)\n?/gm, '')
@@ -171,6 +184,7 @@ function readGitCommit(startDir) {
 }
 
 async function writeGeneratedFiles(generated) {
+  // Only this generated directory is replaced; hand-written routing is copied above.
   await rm(flexdocOutputRoot, { recursive: true, force: true })
   await mkdir(flexdocOutputRoot, { recursive: true })
   await mkdir(dirname(pluginDocsJsonPath), { recursive: true })

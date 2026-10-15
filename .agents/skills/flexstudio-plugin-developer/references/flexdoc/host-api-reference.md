@@ -1063,3 +1063,7 @@ setUnitState 仅适用于 label/value-label，state 为 idle/active/attention/su
 `PluginChartEntryInput` 增加 `availability?: 'available' | 'unavailable' | 'stale' | 'offline'`（省略为 available）以及 `displayText?: string`。后者用于数值/时间格式，例如 `2h 15m`、`10/13 18:30`，限 1–80 字符，仅允许数字、空格和 `:./%+eEhm ds-`，不是任意业务文案。Chart 原生字体覆盖该字符集。图表仍使用 rawValue 计算，displayText 只覆盖显示字符串。
 
 不可用数据仍提交有限 rawValue，但渲染器忽略该值并显示 `--`，不画 0% 或保留旧圆环。图表数据源注销或完整快照缺少已订阅 key 也应清空旧数据。不要把未知值、断连或过期状态编码成真实零值。共享数据源面向内置 Chart 与插件 Chart，只有 Unit 的创建定义和生命周期归属不同。
+
+## 设备输入功能
+
+物理控件绑定使用 `defineFunction` / `FlexPluginBase.functions`，独立于 Unit 定义。声明 `input` 权限；复杂设置使用 `input-function-settings` 和绑定会话桥接，反馈通过当前上下文，状态按设备与绑定隔离。完整生命周期、字段、触觉和验证要求见[输入功能](./input-functions.md)。

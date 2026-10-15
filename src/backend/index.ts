@@ -1,11 +1,14 @@
 import { FlexPluginBase, unitTemplate } from '@flexsdk/runtime';
 import type { PluginDefinitionsPayload, PluginEventEnvelope, PluginLoadContext } from '@flexsdk/types';
+import { createInputFunctions } from './input-functions';
 
 const PLUGIN_UUID = '@your-username/your-plugin-name';
 const UNIT_TYPE_ID = `${PLUGIN_UUID}.example-unit`;
 const RUNTIME_STATUS_CHANNEL = 'runtime-status';
 
 export default class YourPlugin extends FlexPluginBase {
+  functions = createInputFunctions();
+
   async getDefinitions(): Promise<PluginDefinitionsPayload> {
     return {
       libraries: [this.createDefaultLibrary({ name: 'Your Plugin' })],

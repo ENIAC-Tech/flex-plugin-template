@@ -227,6 +227,7 @@ interface PluginRuntimeManifest {
 | `logger` | 插件日志。 |
 | `device` | 设备配置和设备能力查询。 |
 | `definitions` | 注册插件 Library 与 Unit 定义。 |
+| `input` | 注册并接收输入功能、发布当前绑定反馈与功能可用状态；详见[输入功能](./input-functions.md)。 |
 | `bus` | 订阅或取消订阅宿主事件总线。 |
 | `unit` | Unit 事件订阅、Canvas 推帧等 Unit 能力。 |
 | `chart` | 注册并发布插件自定义 Chart 性能/传感器数据源，供内置 Chart Unit 选择和显示。 |

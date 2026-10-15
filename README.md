@@ -119,3 +119,28 @@ package.json                      # Plugin package metadata and local version so
 tsconfig.json
 vite.config.ts
 ```
+
+## Device Input Functions
+
+The template includes a minimal `timeline` input function with typed settings; it needs no Unit target. See the bundled `input-functions.md` before extending it. Keep state per device/binding and use SDK tools for cancellation and feedback. Ordinary settings use fields; a raw JSON editor is only a development probe.
+
+During workspace development, use the matching checked-out SDK and CLI when the new APIs have not been published yet. Build FlexSDK2 with its documented `npm ci` / `npm run build`, then explicitly install these inputs in the plugin:
+
+```bash
+npm install --include=dev --install-links --no-save --package-lock=false <FlexSDK2>/packages/types <FlexSDK2>/packages/runtime <flexcli>
+```
+
+Do not substitute temporary build directories or silently fall back to older SDK versions. Outside workspace development, use published dependencies that contain the input API.
+
+Run `npm run typecheck:backend`, `npm run build`, then `npm run validate:input` to validate the actual built example, including device isolation and cancellation. The host boundary is stubbed; this does not replace hardware acceptance.
+
+## Updating the Bundled Skill
+
+The template owns `SKILL.md`, routing references and the sync implementation. Documentation belongs to FlexStudioDocumentation. From a template checkout, run:
+
+```bash
+node scripts/sync-plugin-skill-docs.mjs --docs-root <FlexStudioDocumentation>/docs/zh/sdk/plugin-development
+node scripts/sync-plugin-skill-docs.mjs --docs-root <FlexStudioDocumentation>/docs/zh/sdk/plugin-development --target-root <plugin-checkout> --check
+```
+
+Omit `--check` to update a target. The workspace default for docs is the initialized sibling FlexStudioDocumentation checkout. Codex plugin's wrapper requires `--template-root <template-checkout>` (or `FLEX_PLUGIN_TEMPLATE_ROOT`); also supply `--docs-root` outside that workspace layout. These maintenance inputs are not needed to build or run a plugin; generated skill files are tracked.

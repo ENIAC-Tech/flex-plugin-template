@@ -8,6 +8,8 @@
     "dev": "flexcli plugin-v2 dev .",
     "pack": "flexcli plugin-v2 pack",
     "validate:renderer-state": "node scripts/validate-renderer-state.mjs",
+    "typecheck:backend": "tsc -p tsconfig.backend.json",
+    "validate:input": "node scripts/validate-input-functions.mjs",
     "sync:plugin-skill-docs": "node scripts/sync-plugin-skill-docs.mjs",
     "sync:plugin-skill-docs:check": "node scripts/sync-plugin-skill-docs.mjs --check"
   },
@@ -16,7 +18,7 @@
     "@flexsdk/types": "^2.3.0"
   },
   "devDependencies": {
-    "@eniac/flexcli": "^1.0.7",
+    "@eniac/flexcli": "^2.0.0",
     "@mdi/font": "^7.4.47",
     "@types/node": "^20.0.0",
     "@vitejs/plugin-vue": "^5.0.0",

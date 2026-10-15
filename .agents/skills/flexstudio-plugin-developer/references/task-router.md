@@ -7,6 +7,9 @@ Read only the references needed for the current task.
 | Understand the plugin system | `flexdoc/overview.md`, then `source-map.md` if source confirmation is needed |
 | Create or reshape a plugin project | `flexdoc/getting-started.md`, `flexdoc/project-structure.md`, `flexdoc/cli-reference.md` |
 | Edit `manifest.json` | `flexdoc/manifest.md`, then `flexdoc/marketplace-release.md` if release behavior changes |
+| Bind physical controls, implement input functions, feedback or haptics | `flexdoc/input-functions.md`, `flexdoc/manifest.md`, `flexdoc/backend-runtime.md` |
+| Implement per-binding settings pages | `flexdoc/input-functions.md`, `flexdoc/frontend-bridge.md`, `flexdoc/ui-ux-guidelines.md` |
+| Choose native panel/chart/label/status-count rendering | `flexdoc/unit-definitions.md`, `flexdoc/host-api-reference.md`, `flexdoc/product-plugin-design-guide.md` |
 | Add or change Unit definitions | `flexdoc/unit-definitions.md`, `flexdoc/backend-runtime.md`, `flexdoc/frontend-bridge.md` |
 | Add or change Unit migration/update hooks | `flexdoc/backend-runtime.md`, `flexdoc/unit-definitions.md`, `flexdoc/marketplace-release.md`, `flexdoc/overview.md` |
 | Implement backend behavior | `flexdoc/backend-runtime.md`, `flexdoc/host-api-reference.md`, `flexdoc/dependency-api.md` |

@@ -10,8 +10,6 @@ FlexStudio 插件系统由五个部分组成：
 
 ## 系统结构图
 
-
-
 可以把插件理解为“两段式运行”：后端负责能力和数据，前端负责界面。FlexStudio 主进程管理后端进程、权限、资源协议和 Host API；渲染进程管理 iframe、Unit 编辑器、运行视图和用户交互。
 
 ## 运行模型
@@ -26,19 +24,13 @@ FlexStudio 插件系统由五个部分组成：
 
 ### Unit 定义注册
 
-
-
 插件后端返回完整 `PluginDefinitionsPayload`。主进程先做 schema 和一致性校验，再把 Library、插件自有 Unit 与插件提供的普通内置 Unit 模板写入 Definition Registry。渲染进程查询 active units 后，插件 Unit 与 `builtinUnits` 模板才会出现在资源面板和编辑器里。
 
 ### 前端调用后端
 
-
-
 插件前端不能直接访问后端进程。`backendRpc()` 会先经过 iframe bridge，再通过 preload IPC 到主进程，最后由 Plugin Manager 转发给插件后端进程中通过 `registerRendererRpc()` 注册的方法。
 
 ### 后端调用宿主能力
-
-
 
 Host API 不是自由调用接口。每次调用都会经过 Capability Registry，并根据 manifest 中的 `permissions` 做权限校验。未声明权限时，调用会被拒绝。
 
@@ -73,8 +65,6 @@ Host API 不是自由调用接口。每次调用都会经过 Capability Registry
 - 已安装版本高于 preset 内 Unit 记录的版本：先尝试执行 Unit 迁移 Hook，再继续缺失/更新检查。
 
 ## 生命周期
-
-
 
 典型生命周期如下：
 
@@ -147,8 +137,6 @@ FlexStudio 主进程的插件系统核心职责包括：
 
 ## 本地开发与发布
 
-
-
 本地开发通常使用 `flexcli plugin-v2 dev <plugin-dir>`。CLI 会构建插件、通过 FlexStudio 的开发控制 WebSocket 挂载插件源目录、订阅日志、监听文件变化，并在变化后触发重载。
 
 正式发布不通过 CLI 直接上传市场。插件必须开源在 GitHub，并通过 GitHub Release 发布 `.flexplugin` 包。官方 reusable workflow 会构建、打包、上传 Release Asset，并通过 webhook 通知插件市场。插件市场只把 webhook 视为通知，实际插件包会由服务端独立从 GitHub Release 拉取。
@@ -172,3 +160,7 @@ FlexStudio 主进程的插件系统核心职责包括：
 
 典型数据流是：设备完成本地交互或上报状态事件 -> 宿主按 Unit owner 转发给插件 -> 插件按需调用 Host API 同步状态、触发设备显示或通知用户。
 <!-- plugin-cycled-slider:end -->
+
+## 设备输入功能
+
+物理控件绑定使用 `defineFunction` / `FlexPluginBase.functions`，独立于 Unit 定义。声明 `input` 权限；复杂设置使用 `input-function-settings` 和绑定会话桥接，反馈通过当前上下文，状态按设备与绑定隔离。完整生命周期、字段、触觉和验证要求见[输入功能](./input-functions.md)。

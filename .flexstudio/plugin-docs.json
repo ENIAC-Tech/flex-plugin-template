@@ -1,7 +1,7 @@
 {
   "sourceRepo": "FlexStudioDocumentation",
   "sourcePath": "docs/zh/sdk/plugin-development",
-  "sourceCommit": "02a8f35561ed715fc330e6096cae52378e4d0af4-dirty",
+  "sourceCommit": "unknown",
   "docsLanguage": "zh-CN",
   "generatedBy": "scripts/sync-plugin-skill-docs.mjs",
   "files": [
@@ -12,6 +12,7 @@
     "project-structure.md",
     "manifest.md",
     "unit-definitions.md",
+    "input-functions.md",
     "backend-runtime.md",
     "frontend-bridge.md",
     "ui-ux-guidelines.md",
