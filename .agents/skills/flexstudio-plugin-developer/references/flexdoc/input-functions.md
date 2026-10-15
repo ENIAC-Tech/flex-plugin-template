@@ -42,7 +42,7 @@ export default class TimelinePlugin extends FlexPluginBase {
 
 `inputs` 的键为 `rotate`、`press`、`value`，值为 `required` 或 `optional`；至少声明一个通道。必须通道缺失时功能不可选。`press` 对应按键或编码器下压。编码器设置为“按住切层”后，下压由设备路由占用，不能用于要求 `press` 的功能；可选 `press` 的旋转功能仍可使用。
 
-可选 `target` 是插件 Unit 的 **typeId**，不是 Unit ID、型号或 Library ID。声明后用户需选择同页匹配 Unit，运行时通过 `ctx.target.uuid` 访问。省略时功能无需目标 Unit。缺失插件、失效目标和未知控件保留配置并显示不可用，不隐式改成其他功能。
+可选 `target` 是插件 Unit 的 **unitId**（如 `console`），不是完整 typeId、实例 UUID、型号或 Library ID。声明后用户需选择同页匹配 Unit，运行时通过 `ctx.target.uuid` 访问。省略时功能无需目标 Unit。缺失插件、失效目标和未知控件保留配置并显示不可用，不隐式改成其他功能。
 
 `name`、`description`、字段标签和可用性原因支持 `PluginDisplayText`（字符串或 `{ default, translations }`）。可用 `createPluginI18n(...).displayText(key)` 生成全部语言的显示文本，图标使用 `mdi-*` 名称。
 
@@ -120,3 +120,11 @@ if (context) {
 用当前配套 SDK、CLI 和宿主执行 manifest/功能定义校验、实际构建和打包。至少验证：必需通道筛选、无目标/有目标功能、按下与松开顺序、取消、两台设备同绑定 ID 隔离、离线不补发、重连激活、过期反馈丢弃。设置页验证范围/层切换、撤销/重做和迟到保存拒绝。
 
 模板提供最小旋转功能；FlexPluginFullTest 的输入时间轴是协议与设置页测试夹具。软件测试和真实硬件验证分别记录；声明支持的控件没有驱动时，不能把注入事件测试当作实机验收。
+
+## 带目标面板的显示导航
+
+功能以 `target: 'console'` 指向本插件的 Unit 定义，以 `ctx.target.uuid` 定位具体实例。通过既有 `setPanelModel` 更新该实例，模型可包含 `navigation: { token, view, item, page?, action? }`。`token` 为 1–64 字节的唯一字符串；`view` 为 `overview` 或 `detail`，`item` 必须存在于同一模型，概览允许 null；只有详情允许选择本会话内的页面和操作。省略 page 使用第一页。
+
+这是一次性显示导航，不执行操作；同 token 的模型刷新不会覆盖设备上后续的触摸选择。新的选择使用新 token；触摸事件与输入功能共用插件内的面板游标，不通过删减模型或虚构触摸事件切换视图。设备以顶部短横线标记当前选择，普通操作原有底部横线不变。
+
+确认业务操作时仍要重新检查当前请求，并在按下时固定身份；长按期间请求被替换、选择改变或绑定取消时，不得用原按下来确认新的请求。Codex 示例的批准/授权使用 `input.gestures` 的单次 hold，并继续调用现有审批执行器。

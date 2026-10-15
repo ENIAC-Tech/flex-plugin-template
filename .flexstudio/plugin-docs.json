@@ -1,7 +1,7 @@
 {
   "sourceRepo": "FlexStudioDocumentation",
   "sourcePath": "docs/zh/sdk/plugin-development",
-  "sourceCommit": "65c2f9d9d54b7081dec09b1192b84e97a9233f23",
+  "sourceCommit": "1e3411ad74cf9229eec58a04898272ced27f34b6",
   "docsLanguage": "zh-CN",
   "generatedBy": "scripts/sync-plugin-skill-docs.mjs",
   "files": [

@@ -36,7 +36,7 @@
   "runtime": {
     "startupTimeoutMs": 15000
   },
-  "devices": ["Flexbar"],
+  "devices": ["Flow2Pro"],
   "requiredCapabilities": ["encoder", "touchscreen"],
   "permissions": ["store", "logger", "definitions", "unit", "ui", "http", "jobs"],
   "dependencies": [
