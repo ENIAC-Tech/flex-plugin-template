@@ -82,6 +82,8 @@ SDK 按“设备序列号＋绑定 ID”串行等待回调完成，并管理绑�
 
 `ctx.haptic(effect, { strength?, count? })` 或 `hostApi.device.haptic(serialNumber, effect, options?)` 由宿主按设备描述校验效果和参数。无马达设备不执行触觉，不以日志或模拟反馈声称已经振动。`keyMode` 允许插件读取，不允许插件写入。
 
+触觉强度省略时为 100，设为 0 时无输出；次数省略时为 1，支持 1–16 的整数。设备关闭振动时不执行插件触觉。队列满或会话失效的请求会丢弃，不会在重连后补播。
+
 ## 设置与设置页
 
 简单设置用 `settings` 声明：`text`、`textarea`、`select` 的值为字符串，`number` 为数字，`switch` 为布尔值。字段用 `default`，不是表单实例的 `value`；选项为 `{ value, title }`。宿主提供编辑器并按类型校验，插件从 `ctx.settings` 读取。
