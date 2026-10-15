@@ -178,8 +178,8 @@ function readGitCommit(startDir) {
       stdio: ['ignore', 'pipe', 'ignore'],
     }).trim()
     return dirty ? `${commit}-dirty` : commit
-  } catch {
-    return 'unknown'
+  } catch (error) {
+    throw new Error(`Cannot read documentation Git provenance at ${startDir}; use a Git checkout and allow the Git subprocess. ${error.message}`)
   }
 }
 
