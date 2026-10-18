@@ -121,10 +121,10 @@ if (context) {
 
 模板提供最小旋转功能；FlexPluginFullTest 的输入时间轴是协议与设置页测试夹具。软件测试和真实硬件验证分别记录；声明支持的控件没有驱动时，不能把注入事件测试当作实机验收。
 
-## 带目标面板的显示导航
+## 带目标 Agent Panel 的输入
 
-功能以 `target: 'console'` 指向本插件的 Unit 定义，以 `ctx.target.uuid` 定位具体实例。通过既有 `setPanelModel` 更新该实例，模型可包含 `navigation: { token, view, item, page?, action? }`。`token` 为 1–64 字节的唯一字符串；`view` 为 `overview` 或 `detail`，`item` 必须存在于同一模型，概览允许 null；只有详情允许选择本会话内的页面和操作。省略 page 使用第一页。
+功能声明 `target:'console'` 并通过 `ctx.target.uuid` 定位实例。使用 `hostApi.unit.sendPanelInput(sn, uuid, input)` 转发相对输入：rotate/delta、press/down、cancel。取消或停用绑定时发送 cancel；不要合并丢失 press 边沿。
 
-这是一次性显示导航，不执行操作；同 token 的模型刷新不会覆盖设备上后续的触摸选择。新的选择使用新 token；触摸事件与输入功能共用插件内的面板游标，不通过删减模型或虚构触摸事件切换视图。设备以顶部短横线标记当前选择，普通操作原有底部横线不变。
+触摸和旋钮共用设备侧导航所有者。插件不再维护面板游标，也不能通过 `setPanelModel.navigation` 选择页面或动作；旧导航字段被 Host 拒绝。选中和 browse 事件只是平台已发生状态的通知，可用于提供对应数据窗口。
 
-确认业务操作时仍要重新检查当前请求，并在按下时固定身份；长按期间请求被替换、选择改变或绑定取消时，不得用原按下来确认新的请求。Codex 示例的批准/授权使用 `input.gestures` 的单次 hold，并继续调用现有审批执行器。
+只有原生 Panel 发出的 action 事件触发审批/回复等业务执行。收到事件后插件重新验证请求身份、有效期和权限，使用 `ackPanelAction` 返回结果。面板的长按、按压取消和焦点变更由原生 UI 处理。无目标的“打开当前桌面会话”等功能仍可执行其自身声明的业务动作。完整接口见 [Agent Panel](./unit-definitions.md#panel-平台原生-agent-panel)。

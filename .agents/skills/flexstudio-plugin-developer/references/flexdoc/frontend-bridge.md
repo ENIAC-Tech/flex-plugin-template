@@ -390,6 +390,35 @@ await bridge.setUnit({
 })
 ```
 
+### 共享外观操作
+
+有 `setUnit` 写权限的插件外观编辑器可以直接使用公共外观函数。Panel 和 cycled 的外观仍由宿主现有编辑器管理；纯函数也可用于模板生成和显式迁移，不会扩大 iframe 的既有权限。
+
+```ts
+import {
+  unitAppearanceTargets, unitAppearanceElements,
+  updateUnitAppearance, arrangeAppearanceElements,
+} from '@flexsdk/runtime'
+
+const unit = await bridge.getUnit()
+const target = unitAppearanceTargets(unit)[0] // 实际 UI 使用用户选中的目标
+if (target) {
+  const editable = unitAppearanceElements(unit, target.id)
+    .filter(element => !element.config?.pinned)
+  const replacements = new Map(
+    arrangeAppearanceElements(editable, { columns: 2 })
+      .map(element => [element.uuid, element]),
+  )
+  const next = updateUnitAppearance(unit, target.id, appearance => ({
+    ...appearance,
+    elements: appearance.elements.map(element => replacements.get(element.uuid) ?? element),
+  }))
+  await bridge.setUnit(next) // 一次提交，沿用宿主校验、草稿和历史
+}
+```
+
+目标切换只更新插件本地选择。不要为排版维护第二份布局、直接修改返回的 Unit、绕开 `setUnit` 写项目，或用 `setUnitData` 保存外观。无效目标/排版参数应在提交前显示错误，保留原 Unit。详见[多状态外观约定](./unit-definitions.md#多状态外观与公共编辑接口)。
+
 ### Unit View Ready
 
 `unit-view` 页面完成首帧渲染后，可以通知宿主：

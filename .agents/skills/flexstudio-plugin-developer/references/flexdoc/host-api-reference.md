@@ -1041,10 +1041,12 @@ OAuth loopback flow 默认等待 120 秒，`timeoutMs` 最大为 10 分钟。插
 
 ## 原生 panel 与 Unit 状态
 
-以下三个方法都需要 manifest 的 unit 权限。Host 从插件进程身份确定所有者，只接受同插件、已加载的正确类型 Unit。
+以下方法都需要 manifest 的 unit 权限。Host 从插件进程身份确定所有者，只接受同插件、已加载的正确类型 Unit。
 
 ```ts
+const bindings = await this.hostApi.unit.getPanelBindings(serialNumber, unitUuid)
 await this.hostApi.unit.setPanelModel(serialNumber, unitUuid, model)
+await this.hostApi.unit.sendPanelInput(serialNumber, unitUuid, {kind:'rotate', delta:1})
 await this.hostApi.unit.ackPanelAction(
   serialNumber, unitUuid, token, 'ok', // ok | expired | failed | unknown
   'Done',
@@ -1052,7 +1054,7 @@ await this.hostApi.unit.ackPanelAction(
 await this.hostApi.unit.setUnitState(serialNumber, labelUuid, 'attention')
 ```
 
-setPanelModel 使用 PanelModel v1，先校验再复制模型，调用者后续修改不影响待发数据。每台设备只允许一个推送在途，各 Unit 只保留最新一份；USB 最多 4 次/秒，RF 最多 1 次/秒。新增 attention 状态可提前发送，但仍遵守设备单在途。卸载插件、删除 Unit 和设备断开会清理队列与相关状态。
+setPanelModel 接收 AgentPanelModel 业务数据；navigation 与 item.slot 被拒绝，宿主绑定固定目标并生成设备 PanelModel v1。getPanelBindings 返回只读的元素绑定快照；sendPanelInput 将相对输入直接按序送到原生 UI，不经过最新模型合并队列。setPanelModel 先校验再复制模型，调用者后续修改不影响待发数据。每台设备只允许一个推送在途，各 Unit 只保留最新一份；USB 最多 4 次/秒，RF 最多 1 次/秒。新增 attention 状态可提前发送，但仍遵守设备单在途。卸载插件、删除 Unit 和设备断开会清理队列与相关状态。
 
 ackPanelAction 的 token 必须来自设备 action 事件。message 可选，最多 240 UTF-8 字节，回执整体最多 1024 字节；不要发送提示词、命令全文或原始异常。回执通过异步 BUS 发给设备，不调用设备 UI 线程上的超时 RPC。过期或不匹配 token 由设备忽略。
 

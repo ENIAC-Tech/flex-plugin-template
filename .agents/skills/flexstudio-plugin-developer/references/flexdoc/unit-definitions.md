@@ -690,35 +690,55 @@ this.createUnitTemplate({
 - `label` 不新增设备端 `changed` 事件。插件通过 `hostApi.unit.setLabelText()` 和 `hostApi.unit.setUnitIcon()` 主动更新设备显示。
 <!-- plugin-cycled-slider:end -->
 
-## panel：原生交互面板
+## panel：平台原生 Agent Panel
 
-panel 在设备本地渲染条目卡片、详情页和动作，在概览、介入、聚焦、提示四种模式间切换。它使用内置 PuHuiTi、Consolas 和图标字体，运行时区域不参与部署栅格化；Theme 提供背景、文字与按钮颜色、字号和圆角。不要设置 hasView、hasAppearanceEditor、interactionMode、defaultActivation、functions、slider、valueLabel、label 或 tapAction。功能编辑器可通过 hasFunctionEditor: true 提供业务配置。
+`plugin.type: 'panel'` 声明使用 FlexStudio/设备提供的通用 Agent Panel。Codex、Claude 等适配器提供会话数据、业务请求和动作执行结果；宿主与固件负责 UI、布局、绑定编辑、导航、翻页、焦点、长按确认与超时。插件不实现 Panel iframe、外观编辑器或渲染器，不声明 `appearanceOverride`、`availableElements`、`hasView`、`hasAppearanceEditor`、`interactionMode`、`defaultActivation`。`hasFunctionEditor` 仅用于排序、快捷回复等业务设置。
 
 ```ts
 this.createUnitTemplate({
-  unitId: 'monitor', typeId: '@demo/monitor.panel',
-  name: 'Monitor', categoryId: 'plugin',
-  plugin: {
-    type: 'panel', pluginUUID: this.pluginUUID,
-    pluginVersion: this.pluginVersion, unitId: 'monitor',
-  },
-  panel: { defaultItemCount: 3, staleAfterMs: 30000 },
+  unitId: 'monitor', typeId: '@demo/monitor.panel', name: 'Agent monitor', categoryId: 'plugin',
+  plugin: { type: 'panel', pluginUUID: this.pluginUUID,
+    pluginVersion: this.pluginVersion, unitId: 'monitor' },
+  panel: { staleAfterMs: 30000, sessionCatalogMethod: 'listSessions' },
   hasFunctionEditor: true,
-  defaultData: { panel: { autoAttention: true } },
 })
+// 注册普通 renderer RPC；平台负责选择控件和持久化。
+this.registerRendererRpc('listSessions', (query: string, selectedIds: string[]) => ({
+  items: [{ id: 'session-stable-id', title: 'Example session' }],
+}))
 ```
 
-panel.exampleModel 可提供静态编辑示例，必须符合 PanelModel。仅放合成内容，不放真实会话、账户或运行快照。实际卡片数量按宽度决定，defaultItemCount 不替代运行时布局规则。没有设备明确公布 capabilities.pluginPanel.version=1 时，宿主会提示更新固件；旧固件沿用 FallbackUnit。
+目录 RPC 接收 `[query, selectedIds]`，返回 `{items: Array<{id, title}>}`。返回当前查询匹配项及已选择项；ID 必须是稳定会话身份，不随请求变化。目录失败不清除已保存绑定；未实现目录的适配器仍可使用自动会话选择。`exampleModel` 可提供符合模型约束的合成示例，不放真实会话、账户或运行快照。
 
-PanelModel 包含 v: 1、可选 notice/defaultItem/staleAfterMs 和 items。每个条目有 id、title、state、pages，可选 subtitle/stateText/badge/timer；页面有 id、lines、actions，可选 title/timer/progress。timer.since 是 Unix 毫秒，progress 为 [完成数, 总数]。state 为 idle、active、attention、success、error、disabled。
+### 单 Session 元素与高度适配
 
-动作包含 id、label，可选 style（normal/primary/danger）、enabled、confirm: 'hold'、priority 和 requireFullLabel。priority 数字越大越先省略；requireFullLabel 无法完整显示时整项隐藏，不缩短敏感规则。行包含 text，可选 mono 和 secondary；mono 行使用 Consolas，并回退到内置中文字体。
+新 Panel 默认三个 `panel-session` 元素；用户可在高级编辑器添加、复制、删除、拖动和缩放，沿用现有最多 8 个会话槽的限制。每个元素保存自身 UUID、百分比几何和 `{view:'overview', slot, itemId?, itemTitle?}`。固定绑定跟随元素，删除中间元素不会改变其他绑定，复制元素分配新槽并恢复自动选择。缺失的固定会话显示禁用占位，不用另一个会话代替。
 
-序列化模型最多 12288 字节，最多 8 个条目、每条目 8 页、每页 4 个动作和 4 行；文本字段最多 240 UTF-8 字节。模型和事件 ID 不可含 NUL。Host 同时检查含 Unit uuid/typeId/token 的设备事件不超过 1024 字节。非法或超限模型在发送前拒绝，平台不静默截断。
+元素内部的标题、状态、计时、进度和活动布局由平台编译器生成。预览和上传调用同一编译器；设备消费相同的像素矩形，整个 Session 是一个编辑与点击区域。详情、通知、返回、动作和隐藏会话栏由平台生成，详情/通知标签用于预览，没有可编辑的内部字段。高度适配仅在 Agent Panel 内部：60px 采用紧凑两行，134px 采用三行；不新增面向所有 Unit 的响应式布局协议。
 
-选中、翻页、按压反馈、长按和计时在设备本地完成。介入等待正在操作的用户空闲 5 秒；聚焦空闲 30 秒回概览；动作提交 10 秒无回执显示结果未知。陈旧或 notice 状态不允许写动作。业务请求是否成功，以后续模型为准，不以按钮回执替代。
+旧分离字段按已有 slot 做一次输入迁移，保存该组矩形并转换旧 `sessionBindings`。运行时不再从字段推断会话。旧布局中复用同一 slot 的多个区域无法恢复成不同会话，需显式新增 Session；已初始化后删除全部 Session 不会自动补回三个。升级需要匹配的宿主、SDK 与固件；设备需公布 `capabilities.pluginPanel: {version:1, sessionElements:2}`。仅有 `version:1` 的旧固件不具备新元素能力，宿主显示更新提示。
 
-`panel-more` 是隐藏会话的状态图标窄栏：只显示当前隐藏会话中存在的状态，每种状态一个图标，纵向左对齐，不显示 More 文案或数量。点击仍轮换下一组。默认布局为 Flow2Pro 预留 32px、FlexbarV2 预留 24px，其余概览宽度均分给会话；旧 `showSummary` 仅兼容读取，不再控制显示。宿主只自动收紧可识别的旧默认布局，保留自定义元素位置。
+### 数据、输入与业务动作
+
+`hostApi.unit.getPanelBindings(serialNumber, unitUuid)` 返回 `{elementId, slot, itemId?, title?}[]`。插件据此获取固定目标数据，但不能重排或写回元素。发布时以固定会话 ID 作为 `item.id`，即便底层请求 ID 改变。使用 `hostApi.unit.setPanelModel` 或基类 `setPanelModel` 发布；Host 拒绝 `navigation` 和 `item.slot`，布局与 slot 投影由平台完成。`layout:'sessions'` 属于内部设备表示，插件无需设置。
+
+运行绑定来自宿主在部署时生成的 `data.panel.bindings` 快照，并随设备已有的 Unit 加载描述返回。插件不要修改这个字段；本地尚未上传的编辑不会影响设备运行绑定。Panel 加载和后续事件都保留设备加载描述中的运行数据，不使用本地项目数据覆盖。
+
+模型包含 `v:1`、`items`，以及可选的 `notice`、`noticeIcon`、`defaultItem`、`staleAfterMs`、数据窗口 `pagination`。条目包括稳定 `id`、`title`、语义 `state`、`pages`，可提供 `activity`、`subtitle`、`stateText`、`badge` 和 `timer`。`timer.since` 是 Unix 毫秒；`elapsedMs` 冻结已完成时长。状态为 idle/active/attention/success/error/disabled。页面表示业务内容或请求，包含 `id`、`lines`、`actions`，可提供 `title`、`timer`、`progress:[完成数,总数]`；`layout:'decision'` 是现有请求语义标记，不提供坐标或布局模板。
+
+动作提供 `id`、完整 `label`、可选 `description`、语义样式 normal/primary/danger、`enabled`、`confirm:'hold'`、`requireFullLabel`；外部打开动作使用 `icon:'open-in-new'`。旧 `priority` 不再让原生 UI 静默省略动作，所有已提供动作由平台分页。点击详情内容切换剩余动作/下一业务页。完整请求标题、正文、敏感规则或决策选项放不下时不可执行，外部打开动作仍可用于查看原请求。
+
+决策页有 2–4 个动作、最后一个动作显式使用 `style:'normal'` 且没有 `icon` 或 `confirm` 时，平台将全部动作排在已有动作区域内，末尾动作使用紧凑次级按钮。例如三个答案后追加“跳过”；插件负责区分空答案与选择答案，不能将跳过文案当作答案提交。这不新增协议字段，其他动作仍沿用原有分页。普通会话详情页在分页前将 `open-in-new` 动作置于首位，确保进入会话时第一个按钮用于在桌面应用打开；其他动作随后排列。提问、审批等 decision 页仍将外部打开动作靠右放在“返回”左边，同时存在紧凑次级动作时将其放在外部打开动作左侧。位置变化保留原始动作事件身份。详情导航统一显示“返回”。
+
+现有设备协议容量不变：模型最多 12288 字节、8 个条目、每条目 8 页、每页 4 个动作/4 行，文字最多 240 UTF-8 字节；ID 不含 NUL，事件含身份/token 后不超过 1024 字节。非法/超限输入发送前拒绝。Codex 对超过三个选项的问题保留“在 Codex 打开”业务动作，不在插件内拆成显示分页；这保留了完整桌面答题路径，但当前不支持在设备逐项回答这些大问题。
+
+旋钮等目标功能调用 `hostApi.unit.sendPanelInput(sn, uuid, input)`，其中 input 为 `{kind:'rotate',delta}`、`{kind:'press',down}` 或 `{kind:'cancel'}`。激活取消时也发送 cancel。平台拥有触摸与旋钮共同使用的选择状态，插件不根据按键直接执行 Panel 审批。接到 `onPanelEvent` 的 action 后重新校验请求、动作、权限与有效期，执行业务并用 `ackPanelAction` 返回结果。陈旧/断线/notice 状态不可执行；更新请求或改变选中目标使按压确认失效。5 秒空闲后允许自动介入，30 秒聚焦空闲返回概览，10 秒未收到动作回执显示未知；未知结果不得自动重放。
+
+`getPanelBindings`、`sendPanelInput`、`setPanelModel`、`ackPanelAction` 都要求 `unit` 权限，并检查插件对已加载 Unit 的所有权。输入按顺序发送，不进入合并最新模型的队列。
+
+### 公共外观编辑与历史
+
+普通多状态 Unit 继续通过已有 `appearance[]` 和公共接口编辑，插件暂不可用时也保留数据。`unitAppearanceTargets`、`unitAppearanceElements`、`updateUnitAppearance`、`arrangeAppearanceElements` 从 `@flexsdk/runtime` 导出；Panel 概览的元素也是现有文档数据。切换预览视图不修改运行状态和历史；显式排列、几何修改、增加/删除与绑定修改共用原有草稿和 Apply/Cancel、撤销/重做。模型更新不写文档。只有初始化或显式“重置布局”创建三个默认会话，不在渲染过程中修改元素。
 
 ## label / value-label 状态与交互
 
