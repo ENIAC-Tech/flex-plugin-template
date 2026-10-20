@@ -728,13 +728,15 @@ this.registerRendererRpc('listSessions', (query: string, selectedIds: string[]) 
 
 模型包含 `v:1`、`items`，以及可选的 `notice`、`noticeIcon`、`defaultItem`、`staleAfterMs`、数据窗口 `pagination`。条目包括稳定 `id`、`title`、语义 `state`、`pages`，可提供 `activity`、`subtitle`、`stateText`、`badge` 和 `timer`。`timer.since` 是 Unix 毫秒；`elapsedMs` 冻结已完成时长。状态为 idle/active/attention/success/error/disabled。页面表示业务内容或请求，包含 `id`、`lines`、`actions`，可提供 `title`、`timer`、`progress:[完成数,总数]`；`layout:'decision'` 是现有请求语义标记，不提供坐标或布局模板。
 
-动作提供 `id`、完整 `label`、可选 `description`、语义样式 normal/primary/danger、`enabled`、`confirm:'hold'`、`requireFullLabel`；外部打开动作使用 `icon:'open-in-new'`。旧 `priority` 不再让原生 UI 静默省略动作，所有已提供动作由平台分页。点击详情内容切换剩余动作/下一业务页。完整请求标题、正文、敏感规则或决策选项放不下时不可执行，外部打开动作仍可用于查看原请求。
+动作提供 `id`、完整 `label`、可选 `description`、语义样式 normal/primary/danger、`enabled`、`confirm:'hold'`、`requireFullLabel`；外部打开动作使用 `icon:'open-in-new'`。旧 `priority` 不再让原生 UI 静默省略动作，所有已提供动作由平台分页。点击详情内容切换剩余动作/下一业务页。会话和页面标题允许截断，不影响动作可用性；`panel-lines` 正文保留全部已提供文字，自动换行并在原区域内纵向滚动，滑动不会触发点击，当前页面刷新时保留滚动位置。请求正文存在但没有可阅读的正文区域、决策按钮自身文字仍放不下、数据过期或动作明确禁用时不可执行；外部打开动作仍可用于查看原请求。
 
 决策页（`layout:'decision'`）将本页全部动作排入共用布局，复用已配置动作元素的样式，不以模板动作槽数量截断审批选项；普通详情页仍按动作槽分页。最后一个动作显式使用 `style:'normal'` 且没有 `icon` 或 `confirm` 时，按既有跳过按钮样式布局。Panel 外层透明且无边框，内部会话卡片及动作按钮统一使用深灰色（#242424）圆角底板和色条：Flow2Pro 色条位于底部居中，Flexbar 色条位于左侧居中。默认动作和辅助按钮采用设备主题色，不同业务选项使用不同色条。跳过、返回和外部打开保持全高，Flow2Pro 宽 0.5U，Flexbar 宽 2U；U 按设备 cellWidth 计算。跳过、返回和外部打开均显示 MDI 图标，决策选项按顺序显示 MDI 数字图标。所有动作按钮按内容测量宽度，最小宽度与辅助按钮相同（Flow2Pro 0.5U、Flexbar 2U）；短文案不等分拉伸，长文案获得剩余空间。字号上限为系统按钮默认值（Flow2Pro 20px、Flexbar 16px），仅在内容放不下时缩小，仍不完整的决策不可执行。色条粗细、长度、边距和圆角以设备为基准固定，不随按钮宽度变化。Flow2Pro 保留统一图标区域，标题从相同高度开始；Flexbar 图标与标题横排垂直居中。默认 Panel 宽度同时容纳三个选项、跳过、返回及问题内容，旧自定义几何不自动扩宽。所有详情页的外部打开动作紧邻“返回”左侧，有“跳过”时放在外部打开左侧；普通业务动作使用其余空间。外部打开按 icon 语义优先进入第一动作窗口，显示位置靠右，动作身份不变。 例如三个答案后追加“跳过”；插件区分空答案与选择答案，不能将跳过文案作为答案提交。其他动作继续使用平台分页。
 
 概览不显示右侧状态栏，也不再提供 `panel-more` 元素，Session 使用全部可用宽度。自动会话使用连续横向滚动：跟随手指移动，松手后由平台 LVGL 惯性减速，不按页跳转，也不首尾循环。固定绑定保持原位。到达已加载内容边缘时，通过既有 `browse` 事件及 `pagination` 请求相邻重叠窗口；返回数据后按会话 ID 保留可见位置，不新增插件 API。单次触摸移动达到 8px 即永久取消本次点击和长按；再次按下只中断惯性，下一次明确点击才能打开会话。渲染和点击命中使用同一滚动位置；触摸及惯性期间不重建节点树。
 
 现有设备协议容量不变：模型最多 12288 字节、8 个条目、每条目 8 页、每页 4 个动作/4 行，文字最多 240 UTF-8 字节；ID 不含 NUL，事件含身份/token 后不超过 1024 字节。非法/超限输入发送前拒绝。Codex 对超过三个选项的问题保留“在 Codex 打开”业务动作，不在插件内拆成显示分页；这保留了完整桌面答题路径，但当前不支持在设备逐项回答这些大问题。
+
+平台补入 `layout`、固定会话 `slot` 和缺失目标占位后，按最终 JSON 的 UTF-8 字节数控制下发容量；插件无需猜测或预留固定数量的字节。临界大小模型优先缩短会话标题、摘要和页面标题等展示字段，不截断请求正文、按钮文案、动作 ID 或审批参数。仍然放不下时，只缩小自动会话窗口的末尾，并保留正确的 `pagination`，由既有 browse 事件读取后续会话；固定会话不被替换。若保留固定会话和至少一个自动会话后仍无法完整传输，则返回 `panel-presentation-budget-exceeded`，不发送残缺决策。源模型及插件保存的待处理队列不受影响。
 
 旋钮等目标功能调用 `hostApi.unit.sendPanelInput(sn, uuid, input)`，其中 input 为 `{kind:'rotate',delta}`、`{kind:'press',down}` 或 `{kind:'cancel'}`。激活取消时也发送 cancel。平台拥有触摸与旋钮共同使用的选择状态，插件不根据按键直接执行 Panel 审批。接到 `onPanelEvent` 的 action 后重新校验请求、动作、权限与有效期，执行业务并用 `ackPanelAction` 返回结果。陈旧/断线/notice 状态不可执行；更新请求或改变选中目标使按压确认失效。5 秒空闲后允许自动介入，30 秒聚焦空闲返回概览，10 秒未收到动作回执显示未知；未知结果不得自动重放。
 
