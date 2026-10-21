@@ -31,7 +31,7 @@ flexcli plugin-v2 pack --dist-dir dist
 - `cycled` reuses the host `cycled-key` architecture. Functions are fixed by the plugin definition; users cannot add/delete/reorder them, but can edit each function appearance through the host editor. Function `data` is edited through the bridge selected-function APIs.
 - `button-group` reuses the host Button Group architecture. Buttons are fixed by the plugin definition; `selectionMode` supports `single` or `multiple`, `mandatory` controls whether at least one button must remain active, and `displayMode`/colors apply across the group. Button business data is edited as selected button `pluginData` through the bridge selected-function APIs.
 - `slider` reuses the host volume slider architecture. The plugin definition supplies `format`, `min`, `max`, and optional `step`; there is no `decimals` field.
-- `value-label` renders runtime numeric text on device using a host-generated atlas. `format` mode accepts finite numbers and ignores `customCharacters`; `custom` mode accepts number/string and allows up to 128 unique declared graphemes.
+- `value-label` renders runtime numeric text on device using Native Text font subsets generated from the declared charset. `format` mode accepts finite numbers and ignores `customCharacters`; `custom` mode accepts number/string and allows up to 128 unique declared graphemes.
 - `label` renders runtime Unicode text on device using fixed TTF fonts: `puhuiti` or `consola`.
 - `appearanceOverride` overlays the host default appearance. For `elements`, an override with `identifier` patches an existing element; an override without `identifier` appends a complete element.
 - Runtime cycled state changes must use `hostApi.unit.setFunction(serialNumber, unitUuid, functionId)`.
@@ -53,6 +53,7 @@ flexcli plugin-v2 pack --dist-dir dist
 - Read `flexdoc/input-functions.md` for the current contract. Register `functions = { id: defineFunction(...) }`; the base class collects definitions and routes events. Declare `input`; haptics additionally need `device`.
 - Required/optional `rotate`, `press`, `value` channels determine eligible controls; optional target is a same-page Unit typeId. No target means no Unit required.
 - Keep state keyed by device serial + binding ID. Use SDK input tools and lifecycle cancellation; offline inputs are not replayed. No acceleration or hold-repeat tools exist.
+- `ctx.feedback({ value })` must be normalized to `[0, 1]` (absolute position); the host rejects other values.
 - Use `ctx.feedback`, `ctx.haptic` and `function.setAvailable` rather than raw BUS messages.
 - Typed fields cover string/number/boolean settings. Complex pages use `input-function-settings`, `getInputBindingContext()` and `setInputBindingSettings(sessionId, settings)`. Preserve the original session across async work; stale saves must fail. Do not write Unit data for binding settings.
 - Validate lifecycle cancellation, reconnect, device isolation, settings switching and undo/redo, then build and pack with matching SDK/CLI.

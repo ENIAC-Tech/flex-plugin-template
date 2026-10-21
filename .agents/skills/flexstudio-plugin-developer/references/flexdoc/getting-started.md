@@ -67,6 +67,14 @@ v2 插件模板会随项目生成一个本地 agent skill：
 npm install
 ```
 
+如果你的 registry 尚未发布与 FlexStudio 匹配的 `@flexsdk/runtime`、`@flexsdk/types` 和 `@eniac/flexcli`，请显式安装对应的已检出版本，不要回退到旧版本：
+
+```bash
+npm install --include=dev --install-links --no-save --package-lock=false <FlexSDK2>/packages/types <FlexSDK2>/packages/runtime <flexcli>
+```
+
+先在 FlexSDK2 中执行 `npm ci` 和 `npm run build`。
+
 ## 检查 manifest
 
 插件必须有唯一 UUID，格式为 `@username/plugin-name`。例如：
@@ -167,7 +175,7 @@ async function callBackend() {
 
 ## 本地开发
 
-启动 FlexStudio，在 **设置 > Plugins** 右上角开启开发监听（默认关闭，端口初始为 `34579`），然后在插件目录外或插件目录内运行：
+启动 FlexStudio，在 **设置 > Plugins** 右上角的 **Plugin debugging**（试管图标）对话框中开启 **Debug mode**（开发监听，默认关闭，端口初始为 `34579`，可在同一对话框修改），然后在插件目录外或插件目录内运行：
 
 ```bash
 flexcli plugin-v2 dev .

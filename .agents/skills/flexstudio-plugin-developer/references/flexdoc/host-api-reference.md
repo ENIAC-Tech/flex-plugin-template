@@ -21,6 +21,7 @@ await this.hostApi.ui.showSnackbarMessage({ message: 'Done', type: 'success' })
 | `hostApi.secrets` | `secrets` | 面向敏感凭据的插件级存储。通常会加密；必要时会回退到宿主可见的明文存储并提示。 |
 | `hostApi.oauth` | `oauth` | 宿主管理 loopback 回调与 `state` 校验的 OAuth 授权辅助。 |
 | `hostApi.jobs` | `jobs` | 宿主拥有的后台任务记录与协作式取消状态。 |
+| `hostApi.locale` | `definitions` | 读取 FlexStudio 当前选择的界面语言。 |
 | `hostApi.logger` | `logger` | 将日志写入宿主日志系统；通常优先使用 `this.logger`。 |
 | `hostApi.plugin` | `definitions` / `store` / `pluginApi` | 插件定义注册、配置持久化与插件依赖调用 API。 |
 | `hostApi.bus` | `bus` | 宿主事件总线。 |
@@ -656,6 +657,16 @@ await this.hostApi.ui.showSnackbarMessage({
 })
 ```
 
+## Locale API
+
+权限：`definitions`
+
+```ts
+const locale = await this.hostApi.locale.getCurrent()
+```
+
+返回 FlexStudio 当前选择的界面语言代码。插件应用它选择本地化文本，并在需要时通过 `plugin-i18n` 辅助方法处理回退。
+
 ## Device API
 
 权限：`device`
@@ -997,7 +1008,7 @@ await this.hostApi.unit.setValueLabelData(
 规则：
 
 - `format` 模式只接受有限 `number`，并按注册的 `format` 生成 `displayText`。
-- `custom` 模式接受 `number | string`，不会检查运行时文本是否都存在于 atlas 中；缺失字符由设备端显示为方框。
+- `custom` 模式接受 `number | string`，不会检查运行时文本是否都存在于声明的字体子集中；缺失字符由设备端显示为方框。
 - 该 API 要求 `unit` 权限，并要求目标 Unit 已加载到指定设备，或可从该设备映射的项目中恢复宿主渲染 slot。
 - `value-label` 不产生设备端 `changed` 事件；插件需要主动调用该 API 更新显示。
 

@@ -76,7 +76,7 @@ SDK 按“设备序列号＋绑定 ID”串行等待回调完成，并管理绑�
 
 工具随绑定生命周期清理；在功能定义时创建处理器，不要每个事件重新创建，否则无法累计手势和余量。
 
-`ctx.feedback({ text?, icon?, value? })` 显示当前功能反馈；底层 `hostApi.input.feedback(serialNumber, bindingId, generation, content)` 需要当前代次，普通插件优先使用上下文。不能给其他插件的绑定写反馈。
+`ctx.feedback({ text?, icon?, value? })` 显示当前功能反馈；底层 `hostApi.input.feedback(serialNumber, bindingId, generation, content)` 需要当前代次，普通插件优先使用上下文。不能给其他插件的绑定写反馈。`value` 是归一化到 `[0, 1]` 的实际绝对位置；相对或未知状态省略它。超出范围或非有限数值会被宿主拒绝（`Invalid input feedback`），例如 `absolute({ min: 0, max: 100 })` 应发送 `value / 100`。
 
 `this.functions.timeline.setAvailable(false, 'Connect the application')` 设置该功能的可用状态；第三个参数 `{ serialNumber }` 可只更新一台设备。恢复时调用 `setAvailable(true, undefined, { serialNumber })`。底层为 `hostApi.input.setAvailability(functionId, available, reason?, serialNumber?)`；SDK 辅助方法也支持在加载前设置初始状态。
 

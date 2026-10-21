@@ -119,7 +119,7 @@ FlexStudio 主进程的插件系统核心职责包括：
 | `cycled` | FlexStudio 默认多状态视图 | 功能编辑器、外观编辑器 | 插件控制的播放/暂停、模式切换等多状态按键。 |
 | `button-group` | FlexStudio 默认按键组视图 | 功能编辑器、外观编辑器 | 插件控制的单选/多选状态组、配置切换和模式选择。 |
 | `slider` | FlexStudio 默认滑块视图 | 功能编辑器、外观编辑器 | 插件控制的音量、亮度、温度等数值滑块。 |
-| `value-label` | FlexStudio 预览运行时文本；设备端用 atlas 绘制 | 功能编辑器、外观编辑器 | 插件控制的数值显示，不需要 canvas 实时推图。 |
+| `value-label` | FlexStudio 预览运行时文本；设备端用 Native Text 字体子集绘制 | 功能编辑器、外观编辑器 | 插件控制的数值显示，不需要 canvas 实时推图。 |
 | `label` | FlexStudio 预览运行时文本；设备端用预置 TTF 绘制 | 功能编辑器、外观编辑器 | 插件控制的 Unicode 文本显示。 |
 
 `builtinUnits` 不属于插件 Unit 运行类型；它只把预配置的普通内置 Unit 模板加入 Unit 浏览器。
@@ -151,7 +151,7 @@ FlexStudio 主进程的插件系统核心职责包括：
 - `cycled` 复用内置 `cycled-key` 的多状态外观和编辑体验，但函数列表由插件定义固定提供，用户不能新增、删除或排序函数。
 - `button-group` 复用内置 Button Group 的按键组外观、单选/多选状态和编辑体验；按钮列表由插件定义固定提供，每个按钮可以携带独立业务 `data`。
 - `slider` 复用内置音量滑块的外观和交互，范围、步进和显示格式由插件定义提供。
-- `value-label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用宿主生成的 atlas 本地绘制。
+- `value-label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用 Native Text 字体子集本地绘制。
 - `label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用预置 `puhuiti` 或 `consola` TTF 绘制。
 - 插件可通过后端 Unit API 监听设备事件，并主动读取或更新设备显示状态。
 - 宿主负责 owner 隔离、校验、格式化和生成设备渲染元数据；具体业务动作仍由插件或对应内置 function 的执行端完成。

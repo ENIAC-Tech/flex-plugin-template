@@ -609,12 +609,12 @@ this.createUnitTemplate({
 
 ### value-label
 
-`value-label` 是插件控制的数值显示 Unit。它没有 slider 的激活态和拖动事件；插件只需要在后端发送数值或数值型字符串，设备端使用宿主预生成的 atlas 本地绘制 primary text，因此不需要用 `custom` 或 `canvas` 实时推图。
+`value-label` 是插件控制的数值显示 Unit。它没有 slider 的激活态和拖动事件；插件只需要在后端发送数值或数值型字符串，设备端使用 Native Text 按声明字符集生成的字体子集本地绘制 primary text，因此不需要用 `custom` 或 `canvas` 实时推图。
 
 `value-label` 有两种模式：
 
 - `format`：`format` 必填，使用一个 C-style `%f` 数字占位符，例如 `%0.1f C`。运行时只接受有限 `number`；宿主格式化后把最终 `displayText` 发给设备。charset 自动由 `0123456789.-` 加 format 字面量生成，忽略 `customCharacters`。
-- `custom`：运行时接受 `number | string`。charset 由 `0123456789.` 加用户声明的 `customCharacters` 生成；最多允许 128 个去重后的自定义 grapheme。运行时文本中 atlas 缺失的字符不会导致更新失败，设备端显示方框占位。
+- `custom`：运行时接受 `number | string`。charset 由 `0123456789.` 加用户声明的 `customCharacters` 生成；最多允许 128 个去重后的自定义 grapheme。运行时文本中字体子集缺失的字符不会导致更新失败，设备端显示方框占位。
 
 ```ts
 this.createUnitTemplate({

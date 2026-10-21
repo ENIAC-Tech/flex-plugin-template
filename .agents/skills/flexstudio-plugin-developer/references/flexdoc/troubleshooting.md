@@ -34,7 +34,7 @@ connection refused
 检查：
 
 - FlexStudio 是否正在运行。
-- **设置 > Plugins** 右上角的开发监听是否开启（默认关闭）。
+- **设置 > Plugins** 右上角 **Plugin debugging** 对话框中的 **Debug mode**（开发监听）是否开启（默认关闭）；该对话框也显示会话、插件状态和近期日志。
 - 设置页是否显示端口占用或监听失败；端口占用时选择其他端口并应用。
 - `flexcli plugin-v2 config` 显示的已保存端口是否与宿主一致；首次使用默认为 `34579`。
 - 使用 `flexcli plugin-v2 config --port <port>` 保存匹配端口，或在连接命令中显式指定 `--port`。
@@ -345,7 +345,7 @@ flexcli plugin-v2 pack --dist-dir dist --platform darwin-arm64
 
 检查：
 
-- workflow 是否固定到官方 tag，例如 `@v1.1.0`。
+- workflow 是否固定到官方 tag，例如 `@v1.3.0`。
 - 是否错误使用 `@main`。
 - 仓库 secret `FLEX_MARKETPLACE_WEBHOOK_SECRET` 是否存在。
 - Release 是否是 `published`，不是 draft。

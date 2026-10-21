@@ -50,8 +50,8 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `src/main/plugin/definition-registry.ts`: active definitions.
 - `src/main/plugin/dependency-state-registry.ts`: direct-dependency retained state, replay, ACK queue, resync, rate limits, and Provider lifecycle.
 - `src/main/plugin/renderer-state-registry.ts`: same-plugin renderer retained state, replay, ACK queue, resync, payload limits, and session cleanup.
-- `src/main/plugin/plugin-value-label-atlas.ts`: `value-label` atlas generation and extended-data reconciliation.
-- `src/main/plugin/plugin-runtime-label-device-data.ts`: device export metadata for `value-label` and `label`.
+- `src/common/native-text/consumer-contracts.ts`: `value-label` Native Text font-subset requirements.
+- `src/main/plugin/capability-registry.ts` (`unit.setValueLabelData`, `unit.setLabelText`, `unit.setUnitIcon`): runtime updates for `value-label` and `label`.
 - `src/common/button-group-state.ts`: host-side Button Group normalization, click application, appearance sync, and runtime state helpers.
 - `src/functions/button-group/`: built-in Button Group unit definition, editor, view, and device export processing.
 - `src/types/plugins/plugin-definitions.ts`: plugin Unit definition shapes, including `PluginButtonGroupDefinition`.
@@ -63,7 +63,7 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `src/renderer/plugin/plugin-unit-provider.ts`: active plugin Unit providers.
 - `src/types/plugins/migration.ts`: plugin Unit migration request/result contracts.
 - `src/common/plugin-unit-migration.ts`: host-side migration result validation and normalization.
-- `src/common/plugin-preset-dependencies.ts`: preset-owned plugin dependency snapshots and project aggregation helpers.
+- `src/common/plugin-page-dependencies.ts`: page/preset-owned plugin dependency snapshots and project aggregation helpers.
 - `src/renderer/composables/usePluginUnitMigration.ts`: renderer project Unit migration orchestration.
 - `src/renderer/composables/useProjectPluginDependencyCheck.ts`: project-open missing/update plugin detection and Marketplace navigation.
 - `src/preload/index.js`: renderer IPC exposure for plugin migration calls.

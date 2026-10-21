@@ -43,16 +43,17 @@ try {
   await deliver('activate', 'A'); await deliver('activate', 'B');
   await deliver('input', 'A', 1, rotate(5));
   await deliver('input', 'B', 1, rotate(2));
-  assert.deepEqual(feedback.slice(-2).map(row => [row[0], row[3].value]), [['A', 10], ['B', 4]]);
+  assert.deepEqual(feedback.slice(-2).map(row => [row[0], row[3].value]), [['A', 0.1], ['B', 0.04]]);
   await deliver('input', 'A', 1, { type: 'cancel', t: sequence });
   await deliver('input', 'A', 1, rotate(1));
-  assert.equal(feedback.at(-1)[3].value, 2);
+  assert.equal(feedback.at(-1)[3].value, 0.02);
   await deliver('deactivate', 'A'); await deliver('activate', 'A', 2);
   const before = feedback.length;
   await deliver('input', 'A', 1, rotate(50));
   assert.equal(feedback.length, before);
   await deliver('input', 'A', 2, rotate(100));
-  assert.equal(feedback.at(-1)[3].value, 100);
+  assert.equal(feedback.at(-1)[3].value, 1);
+  assert.ok(feedback.every(row => row[3].value === undefined || (row[3].value >= 0 && row[3].value <= 1)), 'feedback value must be within [0, 1]');
   assert.deepEqual(errors, []);
   console.log('Built template definitions, typed settings, ACK, device isolation, cancel and generation tests passed.');
 } finally {

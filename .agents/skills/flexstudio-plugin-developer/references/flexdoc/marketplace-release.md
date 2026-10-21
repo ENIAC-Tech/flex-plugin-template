@@ -66,9 +66,9 @@ on:
 
 jobs:
   publish:
-    uses: ENIAC-Tech/flex-plugin-actions/.github/workflows/publish.yml@v1.1.0
+    uses: ENIAC-Tech/flex-plugin-actions/.github/workflows/publish.yml@v1.3.0
     with:
-      flexcli-package: "https://github.com/ENIAC-Tech/flexcli/tarball/refs/heads/v2"
+      flexcli-package: "https://github.com/ENIAC-Tech/flexcli/tarball/refs/heads/master"
       # api-base-url: "https://api.enilinx.com"
     secrets:
       webhook-secret: ${{ secrets.FLEX_MARKETPLACE_WEBHOOK_SECRET }}
@@ -102,7 +102,7 @@ workflow 会用该 secret 对 webhook payload 做 HMAC-SHA256 签名。
 
 | 输入 | 必填 | 默认值 | 说明 |
 | --- | --- | --- | --- |
-| `flexcli-package` | 否 | `https://github.com/ENIAC-Tech/flexcli/tarball/refs/heads/v2` | 传给 `npm install -g` 的 FlexCLI 包地址或版本。 |
+| `flexcli-package` | 否 | `https://github.com/ENIAC-Tech/flexcli/tarball/refs/heads/master` | 传给 `npm install -g` 的 FlexCLI 包地址或版本。 |
 | `api-base-url` | 否 | `https://api.enilinx.com` | 插件市场 API 地址。可只写 hostname，会默认使用 `https`。 |
 
 ## Workflow secret
@@ -142,7 +142,7 @@ workflow 会按平台矩阵构建：
 | --- | --- |
 | `win32-x64` | `windows-latest` |
 | `darwin-arm64` | `macos-latest` |
-| `darwin-x64` | `macos-13` |
+| `darwin-x64` | `macos-15-intel` |
 | `linux-x64` | `ubuntu-latest` |
 
 每个平台会执行：

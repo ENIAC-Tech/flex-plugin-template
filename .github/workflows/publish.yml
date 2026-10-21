@@ -39,8 +39,8 @@ jobs:
 
   publish:
     needs: validate-version
-    uses: ENIAC-Tech/flex-plugin-actions/.github/workflows/publish.yml@v1.1.0
+    uses: ENIAC-Tech/flex-plugin-actions/.github/workflows/publish.yml@v1.3.0
     with:
-      flexcli-package: "https://github.com/ENIAC-Tech/flexcli/tarball/refs/heads/v2"
+      flexcli-package: "https://github.com/ENIAC-Tech/flexcli/tarball/refs/heads/master"
     secrets:
       webhook-secret: ${{ secrets.FLEX_MARKETPLACE_WEBHOOK_SECRET }}
