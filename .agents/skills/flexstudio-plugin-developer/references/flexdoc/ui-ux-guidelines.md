@@ -68,6 +68,13 @@
 - 颜色选择使用 Vuetify `v-color-picker`，通过 swatch + `v-menu` 打开；不要直接使用裸 `<input type="color">`。
 - 字体、大小、对齐、间距等控件要和实际渲染语义一致，不要暴露内部像素换算细节。
 
+## 宿主拥有的通用设置与指示灯
+
+- Unit 的通用设置（长按激活、容器保持打开、文件夹点击后返回等）由宿主放在功能编辑区最下方的**同一个分组**里，行样式为“标签 + `?` 帮助 + 靠右 `v-switch`”。插件的功能编辑器只放自己业务的设置，不要重复渲染这些开关，也不要为了对齐而另写一套同样的行。
+- 如果插件自己的设置也是开关，沿用同样的行结构：左侧标签、`PreferenceHelpTooltip` 风格的 `?` 帮助、右侧开关，说明文字放在 tooltip 里，不用常驻小字。
+- 按钮组每个按钮有宿主绘制的指示灯线（绿色=激活，暗色=关闭），`cycled` 可通过定义里的 `indicator.onFunctionIds` 启用同样的指示灯。不要在外观里自己画指示线、用填充色表达选中，或设置它的颜色。
+- 设备排版在 Unit 的 `layouts.default` 和 `layouts.devices[model]` 中声明，由宿主在添加和跨设备 Page 转换时选择，未匹配型号使用 default；详细规则见 [Unit 定义](./unit-definitions.md#layouts：unit-自有设备布局)。插件自行生成子 Unit 时，用 SDK `selectUnitDeviceLayoutV1` 和 `getLayoutContext().deviceModel` 选择同一份声明，不要从网格形状推断型号。Flow2Pro 与 Flexbar 都是单行网格，不要设计需要多行才能放下的默认布局。
+
 ## 运行时 Unit 视图
 
 运行时视图在 Flexbar 设备尺寸上显示，优先级是可读性和状态表达。
@@ -123,3 +130,11 @@
 宿主 AppearancePopover 统一决定可用宽度、边距和滚动区域。中间标签页、Function 容器、路由器和 iframe 使用 width:100%、min-width:0，不得各自追加 max-content 或最小内容宽度。插件只在实际 iframe 宽度内响应式排布；关联的次要字段可同一行，窄屏自然换行。不要使用固定右侧补偿量。
 
 离散选项统一使用 FlexChoice：1 项只读值，2 项 grouped button，3 项及以上宿主菜单。跨 iframe 的弹层由宿主拥有；表单使用 openFormDialog。不要依赖 iframe 内菜单溢出。
+
+## Composite 与按钮组编辑
+
+Composite 复用宿主画布、平铺图层和属性面板。右侧 Button 区块集中展示布局、受限字体／字号、模式／状态和该 Button 的业务配置；不要另开按钮编辑弹窗或用多个 Unit 模拟一张组合面板。基础外观只保留背景，元素字段在高级编辑器中修改。
+
+Button 支持 title-only/icon-only/icon-left/icon-top/none；none 用于透明独立热区。按钮组只提供前四种，整组共享原生外观，每按钮只编辑名称、MDI 图标与业务数据。它们的确认状态由平台指示灯表达，不另画选中线。Composite 只提供 Unit 级 tap；key Button 自己可配置长按与连发。
+
+字体和档位来自公共准入契约。布局退化提示采用 compact 警示，明确被隐藏／裁切的内容，并提供重算档位动作；动作是一笔草稿修改。切换局部状态预览不执行插件业务、不写 Project 历史。普通 Theme 与样式复制／粘贴不改变 Composite 或按钮组。

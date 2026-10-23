@@ -41,7 +41,7 @@ const DOC_DESCRIPTIONS = {
   'getting-started.md': 'First plugin workflow from scaffold to local dev.',
   'project-structure.md': 'Expected plugin project layout and generated files.',
   'manifest.md': 'Manifest fields, permissions, entries, platforms, devices, and dependencies.',
-  'unit-definitions.md': 'Library and Unit definition payloads and validation rules.',
+  'unit-definitions.md': 'Library and Unit definitions, device layout presets, fallback and Page conversion rules.',
   'input-functions.md': 'Physical input functions, binding settings sessions, lifecycle, tools, feedback and haptics.',
   'backend-runtime.md': 'FlexPluginBase lifecycle, backend RPC, events, and runtime patterns.',
   'frontend-bridge.md': 'Iframe bridge, mountFlexPage, useFlexBridge, and frontend page contracts.',

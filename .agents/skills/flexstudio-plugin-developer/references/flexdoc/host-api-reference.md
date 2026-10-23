@@ -910,6 +910,10 @@ await this.hostApi.device.showSnackbarMessage(event.payload.serialNumber, {
 })
 ```
 
+### 指示灯与宿主绘制
+
+`hostApi.unit.setFunction(...)` 改变 plugin `cycled` Unit 当前函数时，已声明的 `indicator.onFunctionIds` 控制宿主指示灯。按钮组使用共享原生 Button 指示灯，由确认的选中状态驱动；插件无需额外更新外观来画灯。
+
 ### button-group 状态更新
 
 `getButtonGroupState()` 返回当前激活按钮 ID 列表。`setButtonGroupState()` 会按注册定义校验 `selectionMode`、`mandatory` 和按钮 ID，再把规范化后的状态发布到目标设备并写入 runtime slot。
@@ -1080,3 +1084,49 @@ setUnitState 仅适用于 label/value-label，state 为 idle/active/attention/su
 ## 设备输入功能
 
 物理控件绑定使用 `defineFunction` / `FlexPluginBase.functions`，独立于 Unit 定义。声明 `input` 权限；复杂设置使用 `input-function-settings` 和绑定会话桥接，反馈通过当前上下文，状态按设备与绑定隔离。完整生命周期、字段、触觉和验证要求见[输入功能](./input-functions.md)。
+
+## Composite Runtime API
+
+权限为 `unit`。后端在 `await super.onLoad(ctx)` 后使用 `this.compositeElements`。它封装 `hostApi.unit.composite` 的结构化结果、订阅握手和本地缓冲；不要绕过 SDK 直接监听 `device.plugin.composite`。目标必须属于当前插件，并由设备现有 `load` 通知提供 `{ serialNumber, unitUuid: payload.uuid, generation: payload.generation }`。禁止由编辑稿 UUID 或旧缓存猜测 generation。
+
+```ts
+interface CompositeRuntimeTargetV1 {
+  serialNumber: string
+  unitUuid: string
+  generation: string
+}
+// 以下方法都位于 this.compositeElements，省略的类型从 @flexsdk/types 导出。
+interface CompositeElementApi {
+  getSnapshot(target: CompositeRuntimeTargetV1, options: CompositeRuntimeSnapshotOptionsV1): Promise<CompositeRuntimeHostSnapshotV1>
+  applyTransaction(target: CompositeRuntimeTargetV1, transaction: CompositeRuntimeHostTransactionV1): Promise<CompositeRuntimeCommitV1>
+  subscribe(target: CompositeRuntimeTargetV1, options: CompositeRuntimeSubscriptionOptionsV1, handler?: CompositeElementHandler): Promise<CompositeElementSubscription>
+  getButtonConfigs(target: CompositeRuntimeTargetV1): Promise<CompositeRuntimeButtonConfigsV1>
+  setText(target: CompositeRuntimeTargetV1, elementUuid: string, text: string): Promise<CompositeRuntimeCommitV1>
+  setIcon(target: CompositeRuntimeTargetV1, elementUuid: string, icon: string): Promise<CompositeRuntimeCommitV1>
+  hide(target: CompositeRuntimeTargetV1, elementUuid: string): Promise<CompositeRuntimeCommitV1>
+}
+```
+
+`getSnapshot(target, { view })` 每次都向设备读取，返回 `{ target, snapshot }`；宿主不保留设备状态副本，离线时报 `OFFLINE`。`snapshot` 包含 `view`、`revision`、`eventSequence`、`presented`、`pluginOnline`、`elements: [{ element, origin, overriddenFields }]` 和 `states: { [buttonUuid]: { stateId, pendingRequestId? } }`。`deployed` 读取实际部署保存结构，`effective` 包含运行时修改。
+
+| operation | 字段与语义 |
+| --- | --- |
+| `create` | `{ op: 'create', index, element }`；element 不含 UUID，宿主为每个新元素随机生成 UUID（重试同一请求会得到新的 UUID，用 identifier 在返回的快照中定位）。只允许原生 Button/Text/Icon/Image。 |
+| `patch` | `{ op: 'patch', elementUuid, changes: { 'data.text': '25' } }`；keys 是契约内的精确路径，不是任意递归合并。 |
+| `remove` | `{ op: 'remove', elementUuid }`；只能删除本代次运行时创建的元素。 |
+| `setState` | `{ op: 'setState', elementUuid, outcome: 'confirmed', stateId, requestId? }`，或 `{ op: 'setState', elementUuid, outcome: 'failed', requestId }`。这里的 requestId 是原 Button 业务请求 ID。 |
+| `resetOverrides` | `{ op: 'resetOverrides', scope: 'fields', elementUuid, paths }`、`{ op: 'resetOverrides', scope: 'element', elementUuid }` 或 `{ op: 'resetOverrides', scope: 'instance' }`。 |
+
+保存元素不能删除、重排或改变身份；运行时元素可以创建、删除和改变允许的几何字段。模式 `data.interaction.mode` 和 `data.initialStateId` 在创建时固定。整体替换 interaction 必须保留 mode；省略可选长按／连发字段可关闭手势。不用 null 删除字段。状态定义可改，但最终候选必须保留初始、确认和 pending 状态的有效引用。Text/Button 字符串、字体档位、图标与已部署 Image 资源遵循定义准入。
+
+事务按顺序建立候选列表，最终验证与设备应用成功后才发布。返回 `{ committed: true, revision, eventSequence, presented, snapshot }` 表示设备已提交；`presented: false` 表示当前未显示，不能解释为失败。`setText`、`setIcon`、`hide` 也走同一事务。
+
+`applyTransaction(target, { expectedRevision?, operations })` 没有事务请求 ID，也没有幂等记录；`setState` 里的 requestId 只表示原 Button 业务请求。事务已发出但超时、传输中断或设备断连时一律报 `RESULT_UNKNOWN`，宿主不查询也不重发；插件必须重新读取 `effective` 快照确认结果后再决定是否重做。只有从未发出的排队过期事务报 `TIMEOUT`。多个写入者需要比较并发版本时传 `expectedRevision`。`getButtonConfigs` 只读取与已确认部署源和 generation 绑定的主机私有配置，不下发设备、不回退编辑稿；记录缺失时报 `CACHE_MISS`。
+
+订阅返回 `{ snapshot, on(handler), dispose(), closed }`。handler 接收 `snapshot`（reason 为 initial/gap）、`event`、`offline`、`retired`、`error` delivery。事件类型为 `press/release/activate/longPress/repeat/cancel/stateChanged`，包含 target、path、sequence、revision、interactionId、source、timeMs，按需包含 requestId、stateId、repeatIndex。只有 activate/longPress/repeat 等明确业务事件执行动作；API 引起的 stateChanged 只同步。SDK 先装缓冲再向宿主订阅；收到快照并 ACK 后才使设备触摸上线。缺口以新快照修复，不补播旧点击。设备通知 `pluginOnline` 是单向消息，没有应答。
+
+隐藏页面保留本代次有效状态并取消按压；重部署或设备重启换 generation，旧消息被拒绝。插件离线时保留最后确认显示并禁止业务触摸。重连重新获取确认快照并订阅，不排队重放点击。实例不再使用时调用 dispose；`closed` 在释放时解析为 null，在终止失败时解析为结构化错误。
+
+`CompositeElementError` 提供 `code`、`detail: { code, phase, operationIndex?, elementUuid?, path?, message? }` 。常见代码为 `CAPABILITY_UNSUPPORTED`、`OWNER_MISMATCH`、`STALE_GENERATION`、`OFFLINE`、`CACHE_MISS`、`REVISION_CONFLICT`、`NOT_WRITABLE`、`RESOURCE_NOT_DEPLOYED`、`LIMIT_EXCEEDED`、`DEVICE_APPLY_FAILED`、`TIMEOUT`、`RESULT_UNKNOWN`。宿主与固件都需支持 Composite v1；旧宿主／旧设备明确拒绝，不回退 canvas。
+
+当前预算由 SDK `COMPOSITE_RUNTIME_LIMITS_V1` 生成：64 个元素、32 个运行时元素、32 个 Button、64 个操作、事务 32768 UTF-8 字节、整消息 61440 字节、文字 2048 UTF-8 字节、32 个待处理请求／排队请求、单 Unit 16 个订阅、128 条缓冲 delivery、全局队列 128 KiB。值在两型号性能验收前为暂定，超限明确拒绝；插件不得依赖未公布的更大容量。

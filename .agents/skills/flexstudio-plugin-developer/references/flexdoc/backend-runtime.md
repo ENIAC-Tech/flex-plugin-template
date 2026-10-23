@@ -210,6 +210,8 @@ const unit = this.createUnitTemplate({
 })
 ```
 
+`createUnitTemplate()` 未传入 `layouts` 时生成 1×1 的 default；直接返回原始定义则必须显式提供 `layouts.default`。设备预设、fallback 和跨设备 Page 转换共用的声明规则见 [Unit 定义](./unit-definitions.md)。
+
 ## 配置存储
 
 插件可以通过插件级配置文件保存设置：
@@ -526,3 +528,38 @@ onPanelEvent 复用 onUnitEvent(typeId, 'panel')，验证并解包设备 payload
 ## 设备输入功能
 
 物理控件绑定使用 `defineFunction` / `FlexPluginBase.functions`，独立于 Unit 定义。声明 `input` 权限；复杂设置使用 `input-function-settings` 和绑定会话桥接，反馈通过当前上下文，状态按设备与绑定隔离。完整生命周期、字段、触觉和验证要求见[输入功能](./input-functions.md)。
+
+## Composite 订阅与业务确认
+
+Composite 沿用 Unit 的 load/unload 通知。按 `serialNumber + unitUuid + generation` 隔离实例；load 后以 `this.compositeElements` 读取实际快照、建立订阅，再同步业务初值。首个快照中的 identifier 用于查找当前 UUID；不要把模板逻辑标识或上次部署 UUID 当运行身份。
+
+下面是已取得 target 后的处理片段；`readActualPower` / `requestPower` 是插件自己的业务适配器。保存 subscription 并在本实例不再使用时释放。handler 内捕获业务失败，确认的是真实状态。
+
+```ts
+const api = this.compositeElements
+const configs = await api.getButtonConfigs(target)
+const subscription = await api.subscribe(target, { events: ['activate', 'cancel', 'stateChanged'] }, async delivery => {
+  if (delivery.kind !== 'event') return
+  const event = delivery.event
+  if (event.eventType !== 'activate' || event.target.type !== 'button') return
+  if (!event.requestId || !event.stateId) return // key Button 在单独的动作分支处理
+  const requestId = event.requestId
+  try {
+    await requestPower(configs[event.target.uuid], event.stateId)
+    const actualStateId = await readActualPower(configs[event.target.uuid])
+    await api.applyTransaction(target, {
+      operations: [{ op: 'setState', elementUuid: event.target.uuid,
+        outcome: 'confirmed', stateId: actualStateId, requestId }],
+    })
+  } catch (error) {
+    // 只有确认业务失败时报告 failed；业务超时可能已经执行，应查询真实状态。
+    this.logger.error('Power operation needs reconciliation', error)
+  }
+})
+// 实例卸载、目标替换或插件退出时：
+await subscription.dispose()
+```
+
+后端业务已明确失败时发送 `{ op: 'setState', elementUuid, outcome: 'failed', requestId: 原业务请求ID }`。业务推送不关联触摸时可发送 confirmed + 实际 stateId，省略业务 requestId。旧确认不能覆盖新 pending；不要捕获 `STALE_REQUEST` 后改成无关联确认来绕过检查。宿主事务超时与业务超时分开处理，事务 `RESULT_UNKNOWN` 不等于失败：重新读取快照再决定，不自动重放业务。
+
+空调类 Unit 可由 Text 温度、独立加减 Button、toggle 电源和 cycled 模式组成。加减 key Button 的 repeat 每次更新业务目标，cancel 停止连续操作；Text 更新用 setText。共享一套业务状态 owner，API stateChanged 不再次触发业务请求。物理旋钮通过 Input Function 定位目标 Composite，由插件决定选中项与操作；用 patch 绘制选中提示，不伪造触摸或依赖平台自动焦点。

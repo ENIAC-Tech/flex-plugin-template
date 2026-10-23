@@ -22,6 +22,10 @@ export default class YourPlugin extends FlexPluginBase {
           hasFunctionEditor: true,
           hasAppearanceEditor: false,
           hasView: false,
+          layouts: {
+            default: { preferredSize: { width: 1, height: 1 } },
+            devices: { FlexbarV2: { preferredSize: { width: 2, height: 1 } } }
+          },
           defaultData: { message: 'Hello from plugin!' }
         })
       ],

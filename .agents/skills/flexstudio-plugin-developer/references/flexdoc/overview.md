@@ -150,6 +150,7 @@ FlexStudio 主进程的插件系统核心职责包括：
 
 - `cycled` 复用内置 `cycled-key` 的多状态外观和编辑体验，但函数列表由插件定义固定提供，用户不能新增、删除或排序函数。
 - `button-group` 复用内置 Button Group 的按键组外观、单选/多选状态和编辑体验；按钮列表由插件定义固定提供，每个按钮可以携带独立业务 `data`。
+- `cycled` 可选声明 `indicator.onFunctionIds`，由宿主叠加指示灯；按钮组的每个按钮自带指示灯。详见 `unit-definitions.md`。
 - `slider` 复用内置音量滑块的外观和交互，范围、步进和显示格式由插件定义提供。
 - `value-label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用 Native Text 字体子集本地绘制。
 - `label` 复用宿主外观编辑和预渲染流程，但 primary text 由设备端使用预置 `puhuiti` 或 `consola` TTF 绘制。
@@ -164,3 +165,7 @@ FlexStudio 主进程的插件系统核心职责包括：
 ## 设备输入功能
 
 物理控件绑定使用 `defineFunction` / `FlexPluginBase.functions`，独立于 Unit 定义。声明 `input` 权限；复杂设置使用 `input-function-settings` 和绑定会话桥接，反馈通过当前上下文，状态按设备与绑定隔离。完整生命周期、字段、触觉和验证要求见[输入功能](./input-functions.md)。
+
+## Composite 原生交互
+
+`composite` 使用平铺 Button/Text/Icon/Image，设备负责绘制、命中与按压反馈，电脑插件负责业务和确认状态。Button Group 同样复用原生 Button，但保留本地选择规则与统一共享外观。Composite 不需要 iframe/canvas，不进入普通 Theme 替换。定义、模板资源和编辑约束见 [Unit 定义](./unit-definitions.md)，运行事务与订阅见 [Host API](./host-api-reference.md#composite-runtime-api)。

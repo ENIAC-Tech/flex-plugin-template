@@ -13,7 +13,8 @@ Use this map when bundled docs are not enough or when exact implementation behav
 ## FlexSDK2
 
 - `packages/types/src/manifest.ts`: manifest types.
-- `packages/types/src/plugin-definitions.ts`: Library and Unit definition types.
+- `packages/types/src/plugin-definitions.ts`: Library and Unit definition types, including `PluginUnitLayoutsV1`.
+- `packages/types/src/device-layout-selection-v1.ts`: generated exact-model/default selector, exported as `selectUnitDeviceLayoutV1`.
 - `packages/types/src/plugin-api.ts`: Host API contracts.
 - `packages/types/src/plugin-input.ts`: generated function definitions, raw events, contexts and binding settings contracts.
 - `packages/runtime/src/input-function.ts`: defineFunction, lifecycle, availability and per-device/binding serial delivery.
@@ -26,7 +27,21 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `packages/runtime/src/mount-flex-page.ts`: frontend page mounting.
 - `packages/runtime/src/plugin-i18n.ts`: framework-neutral plugin i18n locale fallback and interpolation helpers.
 - `packages/runtime/src/vue-i18n.ts`: Vue `usePluginI18n` adapter.
-- `packages/runtime/src/plugin-definitions-validate.ts`: definition validation.
+- `packages/runtime/src/plugin-definitions-validate.ts`: definition validation (including `indicator.onFunctionIds`).
+- `packages/types/src/plugin-api.ts`: `convertUnit`, `setUnit`/`setUnitData` write contract, `PluginLayoutContext.deviceModel`.
+
+## Composite Contract Owners
+
+- SDK `packages/types/src/plugin-composite-v1.ts`, `plugin-composite-resources-v1.ts`, `composite-runtime-contract-v1.ts`, `composite-runtime-host-v1.ts`: generated public contracts.
+- SDK `packages/runtime/src/composite-element.ts`: buffered subscriptions, structured errors and convenience methods; `FlexPluginBase.compositeElements` owns lifecycle.
+- Studio `src/common/element-contracts-v1.ts`: native admission, writable paths and editor capabilities.
+- Studio `src/common/plugin-composite-v1.ts`: template defaults, Button configuration and identity remapping.
+- Studio `src/common/plugin-composite-resources-v1.ts`: portable resource closure and import through the existing Embedded Theme copy owner.
+- Studio `src/main/plugin/composite-template-resources-v1.ts`: trusted raster inspection before library enumeration.
+- Studio `src/main/plugin/composite-runtime-bridge.ts`: device routing, correlation and subscriptions; no device-state mirror.
+- Studio `src/main/plugin/composite-deployed-button-configs-v1.ts`: private confirmed-deployment config ownership; no editor fallback.
+- Workspace `contracts/composite-runtime/v1/`: wire schema, limits and generated TS/C++ snapshots. `contracts/button-element/v1/`: shared native rendering/admission vectors.
+- FullTest `src/shared/composite-fixture-v1.json`: tracked Composite AC template and portable PNG resource example.
 
 ## FlexCLI
 
@@ -47,7 +62,14 @@ Use this map when bundled docs are not enough or when exact implementation behav
 - `src/common/plugin-input-functions.ts`: function catalog adaptation and input-channel filtering.
 - `src/common/input-binding-edit-v1.ts`: immutable default/override edits shared by all editors.
 - `src/renderer/plugin/input-binding-editor.ts`: settings sessions, project commands and stale-save guards.
-- `src/main/plugin/definition-registry.ts`: active definitions.
+- `src/main/plugin/definition-registry.ts`: active definitions (hidden definitions stay resolvable).
+- `src/common/device-layout-selection-v1.ts`: canonical exact-model/default selector; synced to SDK.
+- `src/common/unit-device-layout-v1.ts`: shared creation and Page conversion layout application.
+- `src/common/plugin-unit-template-v1.ts`: plugin type templates and declared layouts.
+- `src/common/plugin-unit-authoring-v1.ts`: host-owned normalization/validation of editor writes and Unit conversion.
+- `src/renderer/plugin/plugin-bridge.ts`: `set-unit`, `set-unit-data`, `convert-unit` handling and error replies.
+- `src/common/unit-indicator.ts`: indicator colors and placement shared by button groups and cycled Units.
+- `src/renderer/components/device-panel/flex/common/unit-editor/common/`: the common Unit settings group (`UnitCommonSettings`, `UnitSettingRow`).
 - `src/main/plugin/dependency-state-registry.ts`: direct-dependency retained state, replay, ACK queue, resync, rate limits, and Provider lifecycle.
 - `src/main/plugin/renderer-state-registry.ts`: same-plugin renderer retained state, replay, ACK queue, resync, payload limits, and session cleanup.
 - `src/common/native-text/consumer-contracts.ts`: `value-label` Native Text font-subset requirements.

@@ -130,6 +130,10 @@ export default class DemoPlugin extends FlexPluginBase {
           name: 'Demo Unit',
           categoryId: 'demo',
           libraryUUID: library.libraryUUID,
+          layouts: {
+            default: { preferredSize: { width: 1, height: 1 } },
+            devices: { FlexbarV2: { preferredSize: { width: 2, height: 1 } } },
+          },
           defaultData: {},
           hasFunctionEditor: true,
         }),

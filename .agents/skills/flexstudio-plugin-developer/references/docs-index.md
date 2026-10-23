@@ -1,6 +1,6 @@
 # Bundled FlexStudio Plugin Docs Index
 
-Source commit: `e9b66315eb1ddd451b54b97dc7ed047ed46035c7`
+Source commit: `e9b66315eb1ddd451b54b97dc7ed047ed46035c7-dirty`
 Source path: `docs/zh/sdk/plugin-development`
 
 Load only the docs needed for the current task.
@@ -13,7 +13,7 @@ Load only the docs needed for the current task.
 | `flexdoc/getting-started.md` | First plugin workflow from scaffold to local dev. |
 | `flexdoc/project-structure.md` | Expected plugin project layout and generated files. |
 | `flexdoc/manifest.md` | Manifest fields, permissions, entries, platforms, devices, and dependencies. |
-| `flexdoc/unit-definitions.md` | Library and Unit definition payloads and validation rules. |
+| `flexdoc/unit-definitions.md` | Library and Unit definitions, device layout presets, fallback and Page conversion rules. |
 | `flexdoc/input-functions.md` | Physical input functions, binding settings sessions, lifecycle, tools, feedback and haptics. |
 | `flexdoc/backend-runtime.md` | FlexPluginBase lifecycle, backend RPC, events, and runtime patterns. |
 | `flexdoc/frontend-bridge.md` | Iframe bridge, mountFlexPage, useFlexBridge, and frontend page contracts. |

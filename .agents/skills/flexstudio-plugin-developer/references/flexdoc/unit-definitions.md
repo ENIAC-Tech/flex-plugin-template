@@ -39,6 +39,10 @@ export default class DemoPlugin extends FlexPluginBase {
           name: 'Action Button',
           categoryId: 'plugin',
           libraryUUID: library.libraryUUID,
+          layouts: {
+            default: { preferredSize: { width: 1, height: 1 } },
+            devices: { FlexbarV2: { preferredSize: { width: 2, height: 1 } } },
+          },
           hasFunctionEditor: true,
           hasAppearanceEditor: false,
           defaultData: {
@@ -117,7 +121,7 @@ interface PluginUnitDefinitionRuntime {
   hasFunctionEditor?: boolean
   hasAppearanceEditor?: boolean
   hasView?: boolean
-  appearanceOverride?: PluginAppearanceOverride
+  layouts: PluginUnitLayoutsV1
   functions?: PluginUnitDefinitionCycledFunction[]
   slider?: PluginUnitDefinitionSliderConfig
   valueLabel?: PluginUnitDefinitionValueLabelConfig
@@ -142,12 +146,16 @@ interface PluginUnitDefinitionRuntime {
 | `hasFunctionEditor` | 是否提供功能编辑器页面。 |
 | `hasAppearanceEditor` | 是否提供外观编辑器页面。 |
 | `hasView` | 是否提供运行视图 iframe。 |
-| `appearanceOverride` | 可选宿主默认外观覆盖。 |
+| `visibleInLibrary` | 默认 `true`。设为 `false` 时只从库中隐藏，定义仍然被解析：已有项目里的该类型 Unit 继续加载、编辑，并可作为 `convertUnit` 的目标。用于淘汰库入口而不破坏旧项目。 |
+| `layouts` | 必填默认布局和可选的精确设备型号布局，见下文。 |
 | `functions` | `cycled` Unit 的固定函数列表。 |
+| `indicator` | 仅 `cycled`：可选的指示灯，见下文。 |
 | `slider` | `slider` Unit 的数值范围、步进和显示格式。 |
 | `valueLabel` | `value-label` Unit 的 format/custom 模式配置。 |
 | `label` | `label` Unit 的设备端 TTF 字体配置。 |
-| `buttonGroup` | `button-group` Unit 的按钮列表、选择模式、默认激活项和统一外观配置。 |
+| `buttonGroup` | `button-group` Unit 的按钮列表、选择模式、默认激活项和共享原生外观。 |
+| `indicator` | 仅 `cycled`：可选 `onFunctionIds` 指示灯，见下文。 |
+| `composite` | 平铺的原生 Text/Icon/Image/Button 模板、能力要求和 Button 配置声明。 |
 | `defaultData` | 创建 Unit 实例时的默认数据。 |
 | `platforms` | Unit 支持的平台，使用 `win32`、`darwin`、`linux`。 |
 | `libraryUUID` | Unit 所属 Library。省略时使用 payload 中第一个 Library。 |
@@ -196,7 +204,7 @@ interface PluginUnitDefaultActivationConfig {
 
 ```ts
 interface PluginUnit {
-  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider' | 'value-label' | 'label' | 'button-group' | 'panel'
+  type: 'standard' | 'custom' | 'canvas' | 'cycled' | 'slider' | 'value-label' | 'label' | 'button-group' | 'panel' | 'chart' | 'composite'
   pluginUUID: string
   pluginVersion: string
   unitId: string
@@ -205,7 +213,7 @@ interface PluginUnit {
 
 | 字段 | 说明 |
 | --- | --- |
-| `type` | Unit 类型：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label`、`label`、`button-group` 或 `panel`。 |
+| `type` | Unit 类型：`standard`、`custom`、`canvas`、`cycled`、`slider`、`value-label`、`label`、`button-group`、`panel`、`chart` 或 `composite`。 |
 | `pluginUUID` | 注册该 Unit 的插件 UUID，必须与当前插件一致。 |
 | `pluginVersion` | 当前插件版本。通常由 `FlexPluginBase` 从加载上下文填充。 |
 | `unitId` | 插件内 Unit ID，必须与外层 `unitId` 一致。 |
@@ -320,6 +328,14 @@ this.createUnitTemplate({
 })
 ```
 
+## 宿主拥有的 Unit 行为：插件不要重复实现
+
+以下内容由宿主统一提供，插件定义和编辑器**不应**自己实现：
+
+- **通用设置组**：长按激活（`defaultActivation` / “启用长按激活”）、容器的“点击控件后保持打开”、文件夹的“点击后返回”等宿主通用设置，统一显示在 Unit 功能编辑区最下方的同一个分组里，行样式一致（标签、“?”帮助、靠右的开关）。插件编辑器不要再渲染这些开关或另做一个同名设置。
+- **写入规范化与校验**：见 `frontend-bridge.md` 的“Unit 写入规则”。其中 `value-label` 的 `valueLabel`（`format` 必须恰好包含一个 `%[0][w][.d]f`，字面百分号写成 `%%`）和 `slider.format` 在编辑时就会被校验；`format` 模式的数值标签和滑块必须带上这些配置。
+- **指示灯**：按钮组的指示灯由宿主绘制；`cycled` 的指示灯通过上面的 `indicator` 选择启用。
+
 ## 校验规则
 
 FlexStudio 注册定义时会执行结构校验和一致性校验：
@@ -336,8 +352,9 @@ FlexStudio 注册定义时会执行结构校验和一致性校验：
 - `canvas` Unit 不能设置 `hasAppearanceEditor: true`。
 - `value-label` Unit 必须设置 `valueLabel`，不能设置 `functions`、`slider`、`label`、`buttonGroup` 或 `hasView: true`。
 - `label` Unit 必须设置 `label`，不能设置 `functions`、`slider`、`valueLabel`、`buttonGroup` 或 `hasView: true`。
-- `button-group` Unit 必须设置 `buttonGroup`，不能设置 `functions`、`slider`、`valueLabel`、`label`、顶层 `appearanceOverride` 或 `hasView: true`。
-- 其它 Unit 类型不能携带不属于自身类型的 `functions`、`slider`、`valueLabel`、`label` 或 `buttonGroup` 配置。
+- `button-group` Unit 必须设置 `buttonGroup`，不能设置 `functions`、`slider`、`valueLabel`、`label`、布局 `appearance` 或 `hasView: true`。
+- `composite` 必须提供 `composite`，不接受其它类型配置、`hasView: true`、`hasAppearanceEditor: true` 或 Unit 级 hold 激活。
+- 其它 Unit 类型不能携带不属于自身类型的 `functions`、`slider`、`valueLabel`、`label`、`buttonGroup` 或 `composite` 配置。
 
 可以在构建或 CI 中使用 CLI 验证定义：
 
@@ -381,18 +398,22 @@ type PluginUnitType =
   | 'value-label'
   | 'label'
   | 'button-group'
+  | 'panel'
+  | 'chart'
+  | 'composite'
 ```
 
 `PluginUnitDefinitionRuntime` 额外支持：
 
 ```ts
 interface PluginUnitDefinitionRuntime {
-  appearanceOverride?: PluginAppearanceOverride
+  layouts: PluginUnitLayoutsV1
   functions?: PluginUnitDefinitionCycledFunction[]
   slider?: PluginUnitDefinitionSliderConfig
   valueLabel?: PluginUnitDefinitionValueLabelConfig
   label?: PluginUnitDefinitionLabelConfig
   buttonGroup?: PluginButtonGroupDefinition
+  composite?: PluginCompositeDefinitionV1
 }
 
 interface PluginUnitDefinitionCycledFunction {
@@ -418,35 +439,60 @@ interface PluginUnitDefinitionLabelConfig {
 }
 
 interface PluginButtonGroupDefinition {
+  presentationVersion: 1
   buttons: PluginButtonGroupButtonDefinition[]
   selectionMode?: 'single' | 'multiple'
   mandatory?: boolean
-  displayMode?: 'text' | 'icon' | 'icon-text'
+  displayMode?: 'title-only' | 'icon-only' | 'icon-left' | 'icon-top'
+  showHeader?: boolean
   defaultActiveButtonIds?: string[]
-  inactiveBackgroundColor?: string
+  background?: BackgroundStyle
   foregroundColor?: string
-  activeColor?: string
+  fontFamily?: DeviceFontReferenceV1
+  fontSize?: DeviceFontSizeTierV1
+  iconSize?: DeviceIconSizeTierV1
 }
 
 interface PluginButtonGroupButtonDefinition {
   buttonId: string
-  name?: string
-  data?: Record<string, any>
-  appearanceOverride?: PluginAppearanceOverride
+  name?: PluginDisplayText
+  icon?: string
+  data?: Record<string, unknown>
 }
 ```
 
-### appearanceOverride
+### layouts：Unit 自有设备布局
 
-`appearanceOverride` 是对宿主默认外观的字段覆盖，不需要提供完整 `baseAppearance`。宿主在构建默认 Unit 时先创建默认外观，再应用插件提供的 override。
+原始注册声明必须提供 `layouts.default`。`createUnitTemplate()` 在未传入布局时生成 1×1 的默认布局；需要设备差异时明确声明：
 
-`elements` 是数组，覆盖规则不同于普通对象：
+```ts
+layouts: {
+  default: { preferredSize: { width: 1, height: 1 } },
+  devices: {
+    Flow2Pro: { preferredSize: { width: 1, height: 1 } },
+    FlexbarV2: {
+      preferredSize: { width: 2, height: 1 },
+      appearance: {
+        elements: [{ identifier: 'primary-text', geometry: { x: 35, y: 10, width: 60, height: 80 } }],
+      },
+    },
+  },
+}
+```
 
-- override element 带 `identifier` 时，必须匹配默认外观中已有的 element，并只覆盖提供的字段。
-- override element 不带 `identifier` 时，表示追加一个完整新 element。
-- 带未知 `identifier` 的覆盖会被定义校验拒绝。
+选择规则为 `layouts.devices[deviceModelId] ?? layouts.default`。设备预设独立使用，不继承另一个设备或 default 的覆盖字段；省略的外观字段由该类型的共享内容模板提供。`preferredSize` 只含 width/height，均为 1–32 的整数，不包含页面位置。旧的 Unit 顶层 `defaultGeometry`、`appearanceOverride` 已移除。
 
-该机制适用于 `standard`、`slider`、`value-label`、`label`，以及 `cycled.functions[].appearanceOverride` 和 `buttonGroup.buttons[].appearanceOverride`。`button-group` 不接受顶层 `appearanceOverride`，因为每个按钮需要单独绑定外观；统一布局、配色和显示模式由 Button Group 编辑器和 `buttonGroup` 配置维护。`value-label` 和 `label` 的 primary text / primary icon 是设备端运行时元素；外观覆盖可以调整它们的位置、字号、颜色等样式，但设备预渲染 PNG 不会把这两个元素画进去。
+每份布局支持：
+
+- `appearance?: PluginAppearanceOverride`：复用原生外观覆盖类型。按 `identifier` 匹配现有元素；新增槽位必须提供完整 Element。跨设备使用相同标识，避免按数组位置或标题匹配。Chart 每份布局都必须提供完整外观。
+- `buttonGroup?: { displayMode?, fontSize?, iconSize?, showHeader? }`：仅 Button Group，按钮列表、业务数据和状态仍放在顶层 `buttonGroup`。
+- `presentation?: Record<string, unknown>`：仅 Custom/Canvas，写入已有 Unit data，供插件现有绘制接口消费。只声明排版字段，实体绑定等业务字段放在 `defaultData`。
+
+Composite 的共享 `composite.appearance` 定义功能槽位及 Button 内容；每份布局通过 `appearance` 修改对应槽位的 geometry、字号、图标档位和 `data.layout`。省略的 Button 字号由宿主现有像素尺寸初始化规则计算，显式档位不会被覆盖。Panel 仍由平台生成内部排版，只声明首选占位。
+
+新建、库预览和跨设备 Page 转换共用布局选择。新建使用完整目标外观；转换只调整现有匹配元素的排版和外部尺寸，保留 UUID、动作、配置、状态数、文字、颜色和额外元素，不恢复已删除的可选元素。目标设备没有预设时使用 default；插件定义缺失时保留内部外观，使用通用几何适配。
+
+`cycled.functions[].appearanceOverride` 仍用于各状态的内容和样式。宿主在构建状态外观后统一应用所选设备排版。`value-label` 和 `label` 的 primary text / primary icon 仍是设备端运行时元素。
 
 ### cycled
 
@@ -472,7 +518,7 @@ this.createUnitTemplate({
       data: { command: 'play' },
       appearanceOverride: {
         elements: [
-          { identifier: 'title', text: 'Play' },
+          { identifier: 'primary-text', data: { text: 'Play' } },
         ],
       },
     },
@@ -482,7 +528,7 @@ this.createUnitTemplate({
       data: { command: 'pause' },
       appearanceOverride: {
         elements: [
-          { identifier: 'title', text: 'Pause' },
+          { identifier: 'primary-text', data: { text: 'Pause' } },
         ],
       },
     },
@@ -501,71 +547,49 @@ this.createUnitTemplate({
 
 设备点击 plugin `cycled` Unit 时，宿主不会自行切换状态。插件业务处理成功后调用 `hostApi.unit.setFunction(serialNumber, unitUuid, functionId)` 更新设备状态；失败时应使用通知 API 报错。
 
+#### 可选的指示灯 `indicator`
+
+`cycled` 定义可以声明 `indicator: { onFunctionIds: ['on'] }`，列出哪些函数表示“开”。声明后，宿主在当前状态的外观之上叠加与按钮组相同的指示灯线：当前函数在列表中时为绿色，否则为暗色；位置与按钮组相同（Flexbar 左边缘竖线，Flow2Pro 底部居中横线），预览与设备出图使用同一条渲染路径。要求：
+
+- `onFunctionIds` 非空、不重复，且每个 ID 必须是该 Unit `functions` 中的 `functionId`；只允许用于 `cycled`。
+- 不声明时 Unit 的渲染与之前完全一致，内置 Cycled Key 也不受影响。
+- 如果某个 Unit 实例的函数里没有任何“开”函数（例如循环切换多个选项的紧凑选择器），宿主不绘制指示灯，避免出现一直暗着的误导。
+
 ### button-group
 
-`button-group` 是插件控制的按键组，适合输入源、模式、配置项、过滤条件等单选或多选状态切换。它复用内置 Button Group 的外观和状态结构，不需要插件提供 iframe 运行视图。
+`button-group` 适合输入源、模式或过滤条件的单选／多选状态组。每个按钮由设备原生 Button 绘制，名称、图标和业务数据按按钮保存，字体、背景和布局全组共享。
 
 ```ts
-this.createUnitTemplate({
-  unitId: '@acme/media/source',
-  typeId: 'acme.media.source',
-  name: 'Input Source',
-  categoryId: 'media',
-  plugin: {
-    type: 'button-group',
-    pluginUUID: this.pluginUUID,
-    pluginVersion: this.pluginVersion,
-    unitId: '@acme/media/source',
-  },
+const inputSourceUnit = {
+  unitId: 'source', typeId: '@acme/media/source', name: 'Input Source', categoryId: 'media',
+  plugin: { type: 'button-group', pluginUUID: '@acme/media', pluginVersion: '1.0.0', unitId: 'source' },
   hasFunctionEditor: true,
   buttonGroup: {
-    selectionMode: 'single',
-    mandatory: true,
-    displayMode: 'icon-text',
-    inactiveBackgroundColor: '#111827',
-    foregroundColor: '#e5e7eb',
-    activeColor: '#22c55e',
+    presentationVersion: 1,
+    selectionMode: 'single', mandatory: true, displayMode: 'icon-left',
+    background: { backgroundColor: '#111827', borderColor: 'transparent', borderWidth: 0, borderStyle: 'none', borderRadius: 6 },
+    foregroundColor: '#ffffff', fontFamily: 'builtin:font:puhuiti', fontSize: 20, iconSize: 24,
     defaultActiveButtonIds: ['hdmi'],
     buttons: [
-      {
-        buttonId: 'hdmi',
-        name: 'HDMI',
-        data: { source: 'hdmi' },
-        appearanceOverride: {
-          elements: [
-            { identifier: 'title', text: 'HDMI' },
-          ],
-        },
-      },
-      {
-        buttonId: 'usb',
-        name: 'USB',
-        data: { source: 'usb' },
-        appearanceOverride: {
-          elements: [
-            { identifier: 'title', text: 'USB' },
-          ],
-        },
-      },
+      { buttonId: 'hdmi', name: 'HDMI', icon: 'builtin:icon:video-input-hdmi', data: { source: 'hdmi' } },
+      { buttonId: 'usb', name: 'USB', icon: 'builtin:icon:usb', data: { source: 'usb' } },
     ],
   },
-})
+}
 ```
 
-规则：
+- `presentationVersion: 1` 必填；至少两个按钮，`buttonId` 非空、唯一且无首尾空白。
+- `selectionMode` 默认为 `single`，也可用 `multiple`。`mandatory` 默认为 `true`；未指定默认项时选第一个按钮。显式默认项必须存在；单选最多一个，mandatory 不接受空列表。
+- `displayMode` 默认为 `icon-left`。四个值分别是 `title-only`、`icon-only`、`icon-left`、`icon-top`，与 Composite Button 的布局相同。
+- `showHeader: true` 在左上方显示 Unit 自身的图标和名称，下方排列选项。标题栏高 28px，图标 20px、文字 18px，长标题单行省略；标题栏不响应触摸。省略或设为 `false` 时选项占满区域。可在 `layouts.default.buttonGroup` 和设备布局中声明，Page 转换跟随目标布局；不要另存一份标题或图标。
+- `background` 支持完整背景、边框和圆角；`foregroundColor`、设备字体及字号档位全组共享。可用字体和档位见下方 Composite 约束。未指定字号时只在放入实际设备尺寸后初始化一次；拖动尺寸不会自动改写已保存字号。
+- 激活值由宿主统一指示灯表示，手指按压反馈和业务选择状态相互独立。组根部不叠加整 Unit 按压／长按反馈。
+- 顶层及逐按钮均无 `appearanceOverride`，没有逐按钮 appearance 数组，也不提供 `hasView` 或 `hasAppearanceEditor`。宿主编辑器拥有共享外观；名称／图标在按钮列表编辑，业务配置通过所选按钮的 `pluginData` 编辑。
+- 按钮名称可本地化；图标使用已支持的 `builtin:icon:<mdi-name>`，不接受任意图片或 emoji。
 
-- `buttonGroup.buttons` 必填，且至少包含两个按钮。
-- 每个按钮必须有稳定、非空且唯一的 `buttonId`。
-- `selectionMode` 默认为 `single`；`multiple` 允许同时激活多个按钮。
-- `mandatory` 默认为 `true`。启用 mandatory 时至少要有一个激活按钮；未声明 `defaultActiveButtonIds` 时默认激活第一个按钮。
-- `defaultActiveButtonIds` 只接受已声明的 `buttonId`；`single` 模式最多一个激活项。
-- `displayMode` 默认为 `icon-text`，可统一设置为 `text`、`icon` 或 `icon-text`。
-- `inactiveBackgroundColor`、`foregroundColor` 和 `activeColor` 分别控制未激活背景、前景和激活颜色。
-- 不允许设置顶层 `appearanceOverride`；按钮外观使用 `buttonGroup.buttons[].appearanceOverride`。用户在宿主编辑器里调整其中一个按钮的布局或配色时，宿主会按内置 Button Group 规则同步其它按钮，保持组内一致。
-- 按钮业务数据使用 `buttonGroup.buttons[].data`。插件函数编辑器通过 bridge 读写当前按钮的 `pluginData`，不要把 `appearance` 放入 `data`。
-- 不能设置 `hasView: true`。运行视图由宿主提供，插件通过 Host API 读取/设置激活状态并监听 `changed` 事件。
+运行时仍使用 `getButtonGroupState(serialNumber, unitUuid)`、`setButtonGroupState(serialNumber, unitUuid, activeButtonIds)` 和 `changed` 事件。复用原生 Button 绘制不会把按钮组改成 Composite，也不会改变它的即时选择行为；详情见 [Host API](./host-api-reference.md#button-group-状态更新)。
 
-插件可调用 `hostApi.unit.getButtonGroupState(serialNumber, unitUuid)` 读取当前激活按钮 ID 列表，调用 `hostApi.unit.setButtonGroupState(serialNumber, unitUuid, activeButtonIds)` 主动更新状态。设备端交互产生的状态变化会通过 `unit.on(typeId, 'changed')` 发送给拥有该 Unit 的插件。
+按钮组的每个按钮都有一条“指示灯”线（位置与 Agent 面板功能按钮相同，来自宿主唯一的几何来源：Flexbar 左边缘竖线，Flow2Pro 底部居中横线）。按钮处于激活状态时为绿色，关闭时为低对比度暗色；按钮表面保持统一，选中状态只由指示灯表达。颜色是宿主固定的一对常量，插件不设置，也不要在 `appearance` 里再画一条线或用填充色表示选中。预览与设备出图使用同一个宿主视图。
 
 ### slider
 
@@ -690,9 +714,108 @@ this.createUnitTemplate({
 - `label` 不新增设备端 `changed` 事件。插件通过 `hostApi.unit.setLabelText()` 和 `hostApi.unit.setUnitIcon()` 主动更新设备显示。
 <!-- plugin-cycled-slider:end -->
 
+## composite：平铺原生复合 Unit
+
+一个 Composite Unit 在同一外观中平铺 `text`、`icon`、`image`、`button` 元素。它适合一个业务对象的组合控制，例如空调的温度、加减键、电源和模式；元素顺序同时决定绘制层次。只有 Button 接收元素事件，装饰元素不截获点击；Button 以外的区域仍可触发 Unit 自身的 tap。
+
+定义使用 `plugin.type: 'composite'` 和 `composite: { requires: { host: 1, device: 1 }, appearance, buttonConfigs? }`。宿主／固件必须支持 Composite v1，能力不足明确拒绝；插件不提供 iframe 运行视图或第二份画布。保存实例使用既有 `appearance[0].elements`，不保存嵌套容器或运行时 overlay。
+
+### 空调模板
+
+下面的模板由一个温度 Text、两个可连发 key、一个 toggle 和一个 cycled Button 组成。`identifier` 是插件稳定逻辑名称；模板可以省略 UUID，由宿主在插入、复制和转换时分配实例身份。运行时先读已部署快照，通过 identifier 找到实际 UUID。
+
+```ts
+const surface = { backgroundColor: '#242424', borderColor: 'transparent', borderWidth: 0, borderStyle: 'none', borderRadius: 6 }
+const nativeButtonStyle = { background: surface, foregroundColor: '#ffffff', fontFamily: 'builtin:font:puhuiti' }
+const keyButton = (identifier, icon, x) => ({
+  typeId: 'button', identifier, config: { removable: false, visible: true, enabled: true },
+  geometry: { x, y: 0, width: 20, height: 50, rotate: 0 }, style: nativeButtonStyle,
+  data: { layout: 'icon-only', icon, title: '', interaction: { mode: 'key', repeat: { delayMs: 500, intervalMs: 100 } } },
+})
+const climateUnit = {
+  unitId: 'climate', typeId: '@acme/hvac/climate', name: 'Climate', categoryId: 'home',
+  plugin: { type: 'composite', pluginUUID: '@acme/hvac', pluginVersion: '1.0.0', unitId: 'climate' },
+  composite: {
+    requires: { host: 1, device: 1 },
+    appearance: { background: surface, elements: [
+      { typeId: 'text', identifier: 'temperature', config: { removable: false, visible: true, enabled: true },
+        geometry: { x: 20, y: 0, width: 60, height: 50, rotate: 0 },
+        style: { background: surface, backgroundColor: 'transparent', color: '#ffffff', fontFamily: 'builtin:font:ds-digital',
+          fontSize: 28, fontWeight: 'normal', fontStyle: 'normal', textAlign: 'center', textShadow: '' },
+        data: { text: '24' } },
+      keyButton('decrease', 'builtin:icon:minus', 0),
+      keyButton('increase', 'builtin:icon:plus', 80),
+      { typeId: 'button', identifier: 'power', config: { removable: false, visible: true, enabled: true },
+        geometry: { x: 0, y: 50, width: 50, height: 50, rotate: 0 }, style: nativeButtonStyle,
+        data: { layout: 'icon-left', icon: 'builtin:icon:power', title: { default: 'Power', translations: { zh: '电源' } },
+          interaction: { mode: 'toggle' }, initialStateId: 'off',
+          states: [{ stateId: 'off', overrides: {} }, { stateId: 'on', overrides: { foregroundColor: '#66bb6a' } }],
+          indicator: { litStateIds: ['on'] } } },
+      { typeId: 'button', identifier: 'mode', config: { removable: false, visible: true, enabled: true },
+        geometry: { x: 50, y: 50, width: 50, height: 50, rotate: 0 }, style: nativeButtonStyle,
+        data: { layout: 'icon-top', icon: 'builtin:icon:fan', title: 'Mode', interaction: { mode: 'cycled' }, initialStateId: 'auto',
+          states: [{ stateId: 'auto', overrides: { title: 'Auto' } }, { stateId: 'cool', overrides: { title: 'Cool' } },
+            { stateId: 'dry', overrides: { title: 'Dry' } }] } },
+    ] },
+    buttonConfigs: [{ identifier: 'power', settings: { scene: { type: 'text', label: 'Scene', default: 'living-room' } } }],
+  },
+}
+```
+
+### 元素与外观约束
+
+- 几何值仍为 Unit 百分比；正宽高、`rotate: 0`。Button 不嵌套元素。`config.removable: false` 标记必需槽；全 Unit 写入也不能删除或解锁它。
+- Button 的 `data.layout`：`title-only`、`icon-only`、`icon-left`、`icon-top`、`none`。`none` 隐藏内部标题和图标，可配透明背景形成独立热区；普通按钮组不提供该模式。设备在内部固定布局图标和标题；不用额外 Icon/Text 元素模拟按钮内容。
+- 字体仅 `builtin:font:puhuiti`、`builtin:font:consola`、`builtin:font:ds-digital`；字号档位为 `18, 20, 24, 28, 32, 40, 48`，图标档位为 `20, 24, 28, 32, 40, 48`。Icon 的 `style.fontSize` 使用图标档位。Composite 的 Text/Icon 不支持阴影，`textShadow` 必须为空字符串；Text 不支持粗体、斜体或自动字号。
+- 图标仅使用受支持的内置 MDI 引用。所有公开元素字符串拒绝内嵌 NUL。Image 及背景图片只能引用已随部署验证的资源；运行时不能装载任意 URL、本地文件或新图片。
+- Button 模板可省略 `fontSize`／`iconSize`，由宿主在实际插入尺寸上初始化一次。用户明确修改字号或点“重算字号”才改写档位，画布缩放和尺寸拖动不隐式重算。
+- 模板 Text 文本、Button 标题、状态标签及状态覆盖标题接受 `PluginDisplayText`，在创建实例时本地化；保存和运行时值是字符串。模板源不会成为运行时可变状态。
+
+### 模板 Image 与资源闭包
+
+Image 元素与背景图片引用 `asset:<assetId>`。如果该资源不在新项目中，定义必须随 `composite.resources` 提供完整资源包，不能只写一个看起来合法的 UUID。它复用 SDK 导出的 `CompositeTemplateResourcesV1`、`ThemePackageV1`、`AssetRecordV1` 与 `BlobRecordV1`：
+
+```ts
+interface CompositeTemplateResourcesV1 {
+  embeddedTheme: ThemePackageV1
+  blobBytes: Record<`sha256:${string}`, string>
+}
+// embeddedTheme 必需结构；assets/blobs 来自已验证的图像导入结果。
+const resources: CompositeTemplateResourcesV1 = {
+  embeddedTheme: {
+    schemaVersion: 1, kind: 'theme', profile: 'embedded',
+    themeUUID, revision: 1,
+    metadata: { name: 'Climate images', authorName: 'Acme', modifiedAt },
+    core: { variables: {}, assetCategories: [], assets, unitStylePresets: [] },
+    deviceVariants: [], migrationPolicies: [], blobs,
+  },
+  blobBytes, // blobHash -> canonical raw base64
+}
+```
+
+每个 image Asset 包含 `assetId`、`name`、`modifiedAt`、`blobHash`、`contentFingerprint`、`origin: 'embedded-theme'`、`kind: 'image'`，以及真实解码得到的 `renderParameters: { profile: 'rgba8-srgb-v1', width, height, frameDurationsMs, loopCount }`。每个 Blob record 包含 `blobHash`、`byteSize`、真实 `mimeType`、`filename` 和 `present: true`。UUID、UTC 时间、SHA-256、render fingerprint 与字节必须互相匹配；fingerprint 是解码内容的摘要，不能直接拿文件 SHA-256 代替。
+
+`blobBytes` 的键为 `sha256:` 加 64 位小写十六进制摘要，值是标准填充的 base64，不带 data URL 前缀或空白。只允许 image 资源；Theme 变量、分类、样式预设、设备 variants、迁移策略均为空。声明中的每项资源必须属于模板外观的引用闭包。上限为 32 个 Assets、32 个 Blobs、每 Blob 4 MiB、总计 8 MiB；解码检查限制为 4 Mi 像素和 256 帧。
+
+定义校验检查 schema、字节长度、SHA-256、canonical base64 与引用闭包。主进程库枚举和最终项目提交另用既有资源检查器验证真实 MIME 与解码 fingerprint。插入与 `convertUnit` 使用同一资源复制 owner，按内容去重并改写引用，与 Unit 作为一次可撤销提交；失败保留原项目。`setUnit` 和 `setUnitData` 校验真实项目内的引用，不允许悬空资产。上传后 Image 只读取该部署包已有资源，运行时事务不上传图片。
+
+完整、可验证的图像声明见 FlexPluginFullTest 的 `src/shared/composite-fixture-v1.json`；不要把示例 UUID 或机器路径作为资源输入。
+
+### 状态和配置
+
+`key` 没有业务状态，可配置 `interaction.longPress: { thresholdMs }` 和 `repeat: { delayMs, intervalMs }`。长按或连发已触发时，释放不再产生 activate。`toggle` 必须有两个状态，`cycled` 至少两个；两者不接受长按／连发。状态项由稳定 `stateId`、可选 `label` 和 `overrides` 组成，覆盖仅含 `icon`、`title`、`foregroundColor`、`background`。`initialStateId` 和 `indicator.litStateIds` 都必须引用已有状态。
+
+toggle／cycled 激活先发出带 `requestId` 和目标 `stateId` 的 activate，保留最后确认值并进入 pending。插件完成业务请求后用 `setState` 确认真实状态，或报告 failed；设备不以乐观切换冒充业务成功。pending 期间不接收新的业务请求，过期确认不能清掉较新的请求。按压反馈、pending 提示、确认状态和离线提示分别表达不同事实。
+
+`composite.buttonConfigs` 复用宿主标准 settings 表单；每条声明以 `identifier` 或 `mode` 二选一限定 Button。模式通用字段与 identifier 字段可以合并，但不能重名覆盖。实例配置保存在 `unit.data.buttonConfigs[buttonUuid]`，删除／复制 Button 与配置在一个草稿操作中完成。插件运行时通过 `getButtonConfigs(target)` 读取已确认部署的主机私有配置；它不下发到设备，不从当前编辑稿回退。运行时创建的 Button 没有保存配置。
+
+Composite 使用宿主高级编辑器编辑平铺元素、布局、状态与配置；基础外观保留背景。Theme Replacement、样式复制／粘贴不会修改 Composite。Apply/Cancel、撤销／重做沿用 Project 草稿历史；预览状态切换不保存，也不执行插件业务动作。插件缺失时保留可见只读初态和资源。
+
+运行接口见 [Composite Runtime API](./host-api-reference.md#composite-runtime-api)，后端订阅与确认示例见[后端运行时](./backend-runtime.md#composite-订阅与业务确认)。
+
 ## panel：平台原生 Agent Panel
 
-`plugin.type: 'panel'` 声明使用 FlexStudio/设备提供的通用 Agent Panel。Codex、Claude 等适配器提供会话数据、业务请求和动作执行结果；宿主与固件负责 UI、布局、绑定编辑、导航、翻页、焦点、长按确认与超时。插件不实现 Panel iframe、外观编辑器或渲染器，不声明 `appearanceOverride`、`availableElements`、`hasView`、`hasAppearanceEditor`、`interactionMode`、`defaultActivation`。`hasFunctionEditor` 仅用于排序、快捷回复等业务设置。
+`plugin.type: 'panel'` 声明使用 FlexStudio/设备提供的通用 Agent Panel。Codex、Claude 等适配器提供会话数据、业务请求和动作执行结果；宿主与固件负责 UI、布局、绑定编辑、导航、翻页、焦点、长按确认与超时。插件不实现 Panel iframe、外观编辑器或渲染器，布局只声明 `preferredSize`，不声明 `layouts.*.appearance`、`availableElements`、`hasView`、`hasAppearanceEditor`、`interactionMode`、`defaultActivation`。`hasFunctionEditor` 仅用于排序、快捷回复等业务设置。
 
 ```ts
 this.createUnitTemplate({
@@ -760,9 +883,9 @@ setUnitState 给 label/value-label 的动态文字和图标应用固定语义色
 
 文字优先使用 `builtin:font:puhuiti` 或 `builtin:font:consola`。这两个引用直接复用设备内置字体，不生成字体子集，也不随项目重复传输字体文件。预览使用相同字体和原生渲染规则。自定义字体仍通过项目资源和子集部署；不会仅凭字体名称替换。`chart-text` 和 `status-count` 的文字背景应为透明、无边框，Unit 的底色和轮廓放在 `appearance.background`，不要把 Unit surface 复制到文字元素。
 
-- 必须提供 `appearanceOverride`，并绑定 `plugin:<pluginUUID>:<sourceId>:<entryKey>` 数据源。不要声明 iframe `hasView` 或 `hasAppearanceEditor`，也不要附加 canvas/functions、slider、label 或 button-group 运行时配置。
+- 每份布局必须提供 `appearance`，并绑定 `plugin:<pluginUUID>:<sourceId>:<entryKey>` 数据源。不要声明 iframe `hasView` 或 `hasAppearanceEditor`，也不要附加 canvas/functions、slider、label 或 button-group 运行时配置。
 - 使用已有 `chart` 权限、`registerChartDataSource`、`publishChartEntries`。不新增图片推送协议。设备通过现有 load/unload 和 rawEvent（touch、long-pressed）通知插件。
-- `defaultGeometry: {width: 3, height: 1}` 指定新建 Unit 的默认格数；两项均为正数，最大 32。所有添加入口通过同一 Unit 工厂消费此默认值。迁移旧 Unit 应保留其 geometry，不应静默挤占邻居。
+- `layouts.default.preferredSize: {width: 3, height: 1}` 指定默认格数，设备专用值放在对应的 `layouts.devices[model]` 中。添加和显式跨设备 Page 转换共用该偏好；普通加载不会改变已保存布局。
 - 多实例数据源可在元素 `dataSourceKey` 或 line `sources[].key` 中使用 `{unitUUID}`，Studio、设备和字体收集均按当前 Unit UUID 解析。共享指标不必按设备 load 才发布，这样新建 Unit 在编辑器中也能显示真实数据。
 - gauge 可声明 `style.thresholds: [{max: 5, color: '#EF5350'}, {max: 20, color: '#FFB74D'}]`，按满足 displayValue <= max 的最小 max 选色，其他数值使用 style.color；最多 8 条。与内置 Chart 共用语义。
 - 使用 `migrateUnit` 将旧类型迁移为 chart 时，返回 `{unit}`，一次性更新 plugin、appearance、config，保留 Unit UUID、位置和尺寸，并给新元素分配唯一 UUID。不要只改 type 而保留空布局。
@@ -773,8 +896,8 @@ setUnitState 给 label/value-label 的动态文字和图标应用固定语义色
 
 `status-count` 是一个可选择状态的原生文字元素，同一类型可放置多份。每个元素显示一行状态名称和数量；不使用图表外观或通用图表配置面板。它复用现有 `chart` 数据发布、设备文字绑定、字体构建和文字渲染，不新增推送通道。
 
-- 状态展示 Unit 使用 `plugin.type: 'standard'`，由宿主的普通 Unit 视图和外观编辑器呈现；设置 `availableElements: ['status-count', 'text', 'icon', 'image']` 限定高级编辑器的元素面板，`defaultGeometry: {width: 1, height: 1}` 指定新建尺寸。只有需要图表元素的 Unit 才使用 `chart`，例如额度圆环。
-- `availableElements` 适用于 `standard` 和 `chart`。显式指定时，`appearanceOverride.elements` 提供完整元素，宿主从空外观构建，不插入默认名称或图标元素，也不接受 primary 元素补丁；元素 UUID 必须唯一。普通 Unit 的面板和外观不能包含 `chart-*` 图表元素。省略该字段时保留原类型的默认外观构建规则。
+- 状态展示 Unit 使用 `plugin.type: 'standard'`，由宿主的普通 Unit 视图和外观编辑器呈现；设置 `availableElements: ['status-count', 'text', 'icon', 'image']` 限定高级编辑器的元素面板，`layouts.default.preferredSize: {width: 1, height: 1}` 指定新建尺寸。只有需要图表元素的 Unit 才使用 `chart`，例如额度圆环。
+- `availableElements` 适用于 `standard` 和 `chart`。显式指定时，`layouts` 中每份 `appearance.elements` 提供完整元素，宿主从空外观构建，不插入默认名称或图标元素，也不接受 primary 元素补丁；元素 UUID 必须唯一。普通 Unit 的面板和外观不能包含 `chart-*` 图表元素。省略该字段时保留原类型的默认外观构建规则。
 - 动态计数复用 `chart` Host API 和既有设备数据协议；数据通道名称不决定 Unit 类型。宿主与固件按普通 Unit 实际包含的 `status-count` 元素启用数据消费，不依赖插件名称或业务 ID。断连、过期和来源移除显示 `--`，真实零值保留。
 - 元素 `data` 为 `{dataSourceKey, updateInterval, options: [{label, dataSourceKey}]}`。`options` 的数据键唯一，当前选中键必须在其中。高级编辑器只显示状态选择器；插件自行决定状态定义，不在宿主硬编码业务状态。
 - 同一组选项也放在 Unit 的 `defaultData.statusCountOptions`，供拖拽、双击新增元素使用。复制粘贴保留元素已有选项。

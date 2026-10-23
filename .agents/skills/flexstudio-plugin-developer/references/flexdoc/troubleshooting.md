@@ -272,6 +272,22 @@ await setUnitData({
 })
 ```
 
+## 编辑器写入被拒绝（set-unit-error / convert-unit-error）
+
+症状：`setUnit`、`setUnitData` 或 `convertUnit` 的 Promise 以错误拒绝，宿主弹出“插件无法更新此 Unit”。
+
+先看错误消息：
+
+| 消息 | 原因 | 处理 |
+| --- | --- | --- |
+| `PLUGIN_SET_UNIT_IDENTITY_CHANGED` | `setUnit` 改了 `uuid`、`typeId` 或 `plugin`。 | 要改变定义用 `convertUnit`，`setUnit` 只改内容。 |
+| `PLUGIN_CONVERT_UNKNOWN_TARGET` / `PLUGIN_CONVERT_FOREIGN_SOURCE` | `unitId` 不是本插件的定义，或当前 Unit 不属于本插件。 | 传目标定义的 `plugin.unitId`（不是 `typeId`）。 |
+| `PLUGIN_CONVERT_INVALID_DATA` / `..._APPEARANCE` / `..._ICON` | `data` 不是对象、`appearance` 不是数组或 `icon` 不是字符串。 | 修正参数类型。 |
+| `PLUGIN_UNIT_INVALID: ...` | 结果不是合法 Unit，后面列出失败的规则。 | 按规则修正；`invalid-value-label-domain` / `unsupported-slider-format` 见下。 |
+| `BUILTIN_ICON_UNKNOWN` | 使用了宿主图标表里没有的 `mdi-*` 图标。 | 换一个存在的图标名。 |
+
+`invalid-value-label-domain`：`value-label` 缺少 `data.valueLabel`，或 `format` 不合法（必须恰好一个 `%[0][w][.d]f`，字面 `%` 写成 `%%`）。最常见的原因是用只含绑定字段的数据**整体替换**了 `unit.data`，把 `valueLabel` 丢了。解决办法是基于当前 `unitData` 合并后再写，或通过 `convertUnit` 带上完整的原生配置。这条规则现在在编辑时就会拒绝；如果是更早的写入留下的旧数据，上传时会报同样的原因，并带上页面名和 Unit 名，打开那个 Unit 的编辑器重写即可。
+
 ## backendRpc 找不到方法
 
 错误：
@@ -416,3 +432,19 @@ flexcli plugin-v2 logs @owner/plugin-name
 - FlexStudio 插件市场中的插件状态
 - 插件是否启用
 - 插件是否有未满足依赖
+
+## Composite 或 Button Group 被拒绝
+
+| 现象／错误 | 检查与处理 |
+| --- | --- |
+| `CAPABILITY_UNSUPPORTED` | 宿主、SDK、固件需同时支持 Composite v1；不要退回 canvas。 |
+| `STALE_GENERATION` / `OWNER_MISMATCH` | 从当前 load 取序列号、UUID 与 generation，按插件和实例隔离，不复用旧目标。 |
+| `CACHE_MISS` | 未找到已确认部署的配置或快照；不能读取编辑稿代替。 |
+| `RESULT_UNKNOWN` | 事务已发出但没有收到设备应答；先读设备实际快照确认，再决定是否重做，不要盲目重发业务。 |
+| `NOT_WRITABLE` | 检查精确属性路径、保存元素结构，以及固定的 Button mode/initialStateId。 |
+| `COMPOSITE_RESOURCE_*` | 检查完整 embedded Theme、canonical base64、真实 SHA-256/字节数、image-only 闭包与限额。 |
+| 模板在空项目无法插入 | 不可只声明 asset UUID；资源必须随 composite.resources 携带，并经真实图像检查。 |
+| `PLUGIN_UNIT_WRITE_STALE` | 转换或写入等待期间上下文变化；重新读取当前 Unit，避免覆盖更新。 |
+| 旧按钮组定义失败 | v1 要求 presentationVersion: 1、共享 background/foregroundColor/fontFamily/fontSize/iconSize 与四种布局预设；不接受旧显示枚举、逐按钮外观或 activeColor。 |
+
+尺寸不足时先检查布局退化提示和字号档位；使用宿主的“按当前尺寸重新计算档位”，不要运行时换任意字号或字体。插件缺失时保存外观和资源仍保留，离线 Button 禁止业务触摸。

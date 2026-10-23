@@ -120,6 +120,12 @@ tsconfig.json
 vite.config.ts
 ```
 
+## Unit Device Layouts
+
+The example declares `layouts.default` (1×1) and an independent `FlexbarV2` preset (2×1). Exact models select their preset; other models use the default. New Units and explicit cross-device Page conversion use this declaration. Saved instances retain their layout on ordinary load. See the bundled [Unit definitions](.agents/skills/flexstudio-plugin-developer/references/flexdoc/unit-definitions.md) for native appearance, Button Group and Custom/Canvas presentation fields.
+
+Unit-level `defaultGeometry` and `appearanceOverride` are removed; cycled function overrides remain supported. Use matching workspace SDK/CLI builds until these contracts are published.
+
 ## Device Input Functions
 
 The template includes a minimal `timeline` input function with typed settings; it needs no Unit target. See the bundled `input-functions.md` before extending it. Keep state per device/binding and use SDK tools for cancellation and feedback. Ordinary settings use fields; a raw JSON editor is only a development probe.
